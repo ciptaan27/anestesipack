@@ -1,0 +1,2467 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Asesmen Anestesi</title>
+    <script src="/_sdk/data_sdk.js"></script>
+    <script src="/_sdk/element_sdk.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
+    <style>
+      body {
+        box-sizing: border-box;
+        font-family: "Poppins", sans-serif;
+      }
+
+      @media print {
+        .no-print {
+          display: none !important;
+        }
+        body {
+          background: white !important;
+        }
+      }
+
+      .checkbox-large {
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+      }
+    </style>
+    <style>
+      @view-transition {
+        navigation: auto;
+      }
+    </style>
+  </head>
+  <body class="h-full">
+    <div id="app" class="h-full w-full overflow-auto"></div>
+    <script>
+      const defaultConfig = {
+        background_color: "#f0f9ff",
+        surface_color: "#ffffff",
+        text_color: "#0f172a",
+        primary_action_color: "#0ea5e9",
+        secondary_action_color: "#64748b",
+        app_title: "Asesmen Anestesi Lengkap",
+        hospital_name: "Rumah Sakit Umum",
+        font_family: "Poppins",
+        font_size: 16,
+      };
+
+      let allRecords = [];
+      let patients = [];
+      let monitoringRecords = [];
+      let observasiRecords = [];
+      let currentView = "list";
+      let currentPatientId = null;
+      let activeTab = "patient";
+      let formData = {};
+
+      const dataHandler = {
+        onDataChanged(data) {
+          allRecords = data;
+          patients = data.filter((r) => r.record_type === "patient");
+          monitoringRecords = data.filter((r) => r.record_type === "monitoring");
+          observasiRecords = data.filter((r) => r.record_type === "observasi");
+          render();
+        },
+      };
+
+      async function init() {
+        const result = await window.dataSdk.init(dataHandler);
+        if (!result.isOk) console.error("SDK init failed");
+      }
+
+      async function onConfigChange(config) {
+        const baseFont = config.font_family || defaultConfig.font_family;
+        const baseFontSize = config.font_size || defaultConfig.font_size;
+        const backgroundColor = config.background_color || defaultConfig.background_color;
+        const surfaceColor = config.surface_color || defaultConfig.surface_color;
+        const textColor = config.text_color || defaultConfig.text_color;
+        const primaryColor = config.primary_action_color || defaultConfig.primary_action_color;
+        const secondaryColor = config.secondary_action_color || defaultConfig.secondary_action_color;
+
+        document.body.style.fontFamily = `${baseFont}, sans-serif`;
+        document.body.style.backgroundColor = backgroundColor;
+        document.body.style.color = textColor;
+
+        const appElement = document.getElementById("app");
+        if (appElement) {
+          appElement.style.backgroundColor = backgroundColor;
+          appElement.style.fontSize = `${baseFontSize}px`;
+        }
+
+        document.querySelectorAll(".surface").forEach((el) => (el.style.backgroundColor = surfaceColor));
+        document.querySelectorAll(".text-content").forEach((el) => (el.style.color = textColor));
+        document.querySelectorAll(".primary-btn").forEach((el) => (el.style.backgroundColor = primaryColor));
+        document.querySelectorAll(".secondary-btn").forEach((el) => (el.style.backgroundColor = secondaryColor));
+        document.querySelectorAll(".title-text").forEach((el) => (el.style.fontSize = `${baseFontSize * 2}px`));
+        document.querySelectorAll(".subtitle-text").forEach((el) => (el.style.fontSize = `${baseFontSize * 1.5}px`));
+        document.querySelectorAll(".body-text").forEach((el) => (el.style.fontSize = `${baseFontSize}px`));
+        document.querySelectorAll(".small-text").forEach((el) => (el.style.fontSize = `${baseFontSize * 0.875}px`));
+      }
+
+      if (window.elementSdk) {
+        window.elementSdk.init({
+          defaultConfig,
+          onConfigChange,
+          mapToCapabilities: (config) => ({
+            recolorables: [
+              {
+                get: () => config.background_color || defaultConfig.background_color,
+                set: (value) => {
+                  config.background_color = value;
+                  window.elementSdk.setConfig({ background_color: value });
+                },
+              },
+              {
+                get: () => config.surface_color || defaultConfig.surface_color,
+                set: (value) => {
+                  config.surface_color = value;
+                  window.elementSdk.setConfig({ surface_color: value });
+                },
+              },
+              {
+                get: () => config.text_color || defaultConfig.text_color,
+                set: (value) => {
+                  config.text_color = value;
+                  window.elementSdk.setConfig({ text_color: value });
+                },
+              },
+              {
+                get: () => config.primary_action_color || defaultConfig.primary_action_color,
+                set: (value) => {
+                  config.primary_action_color = value;
+                  window.elementSdk.setConfig({ primary_action_color: value });
+                },
+              },
+              {
+                get: () => config.secondary_action_color || defaultConfig.secondary_action_color,
+                set: (value) => {
+                  config.secondary_action_color = value;
+                  window.elementSdk.setConfig({ secondary_action_color: value });
+                },
+              },
+            ],
+            borderables: [],
+            fontEditable: {
+              get: () => config.font_family || defaultConfig.font_family,
+              set: (value) => {
+                config.font_family = value;
+                window.elementSdk.setConfig({ font_family: value });
+              },
+            },
+            fontSizeable: {
+              get: () => config.font_size || defaultConfig.font_size,
+              set: (value) => {
+                config.font_size = value;
+                window.elementSdk.setConfig({ font_size: value });
+              },
+            },
+          }),
+          mapToEditPanelValues: (config) =>
+            new Map([
+              ["app_title", config.app_title || defaultConfig.app_title],
+              ["hospital_name", config.hospital_name || defaultConfig.hospital_name],
+            ]),
+        });
+      }
+
+      function getConfig() {
+        return window.elementSdk?.config || defaultConfig;
+      }
+
+      function render() {
+        const app = document.getElementById("app");
+        const config = getConfig();
+
+        if (currentView === "list") {
+          app.innerHTML = renderListView(config);
+        } else if (currentView === "form") {
+          app.innerHTML = renderFormView(config);
+        }
+
+        onConfigChange(config);
+      }
+
+      function renderListView(config) {
+        const sortedPatients = [...patients].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        return `
+        <div class="min-h-full p-6">
+          <div class="max-w-7xl mx-auto">
+            <div class="surface rounded-2xl shadow-xl p-8 mb-6">
+              <div class="flex justify-between items-center">
+                <div>
+                  <h1 class="title-text text-content font-bold mb-2">🏥 ${config.app_title || defaultConfig.app_title}</h1>
+                  <p class="body-text text-content opacity-70">${config.hospital_name || defaultConfig.hospital_name}</p>
+                </div>
+                <button onclick="showForm()" class="primary-btn text-white px-8 py-4 rounded-xl font-bold hover:opacity-90 transition shadow-lg">
+                  ➕ Pasien Baru
+                </button>
+              </div>
+            </div>
+
+            <div class="surface rounded-2xl shadow-xl p-8">
+              <h2 class="subtitle-text text-content font-bold mb-6">📋 Master Data Pasien</h2>
+              ${
+                sortedPatients.length === 0
+                  ? `
+                <div class="text-center py-16">
+                  <div class="text-6xl mb-4">📝</div>
+                  <p class="body-text text-content opacity-50">Belum ada data pasien.</p>
+                  <p class="small-text text-content opacity-40">Klik "Pasien Baru" untuk memulai.</p>
+                </div>
+              `
+                  : `
+                <div class="grid gap-4">
+                  ${sortedPatients
+                    .map(
+                      (patient) => `
+                    <div class="border-2 border-gray-200 rounded-xl p-6 hover:shadow-lg transition">
+                      <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                          <h3 class="body-text text-content font-bold text-lg mb-3">${patient.name}</h3>
+                          <div class="grid grid-cols-2 gap-x-6 gap-y-2">
+                            <p class="small-text text-content opacity-60">📋 No. RM: <strong>${patient.patient_id}</strong></p>
+                            <p class="small-text text-content opacity-60">🆔 ID Operasi: <strong>${patient.operation_id || "-"}</strong></p>
+                            <p class="small-text text-content opacity-60">👤 ${patient.gender === "L" ? "Laki-laki" : "Perempuan"}, ${calculateAge(patient.birth_date)} tahun</p>
+                            <p class="small-text text-content opacity-60">🩺 ${patient.medical_diagnosis || "-"}</p>
+                            <p class="small-text text-content opacity-60 col-span-2">⚕️ Tindakan: <strong>${patient.procedure_name || "-"}</strong></p>
+                          </div>
+                          <p class="small-text text-content opacity-40 mt-2">🗓️ ${new Date(patient.created_at).toLocaleString("id-ID")}</p>
+                        </div>
+                        <div class="flex gap-2">
+                          <button onclick='editPatient("${patient.__backendId}")' class="secondary-btn text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 shadow">
+                            ✏️ Edit
+                          </button>
+                          <button onclick='deletePatient("${patient.__backendId}")' class="bg-red-500 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-red-600 shadow">
+                            🗑️ Hapus
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  `
+                    )
+                    .join("")}
+                </div>
+              `
+              }
+            </div>
+          </div>
+        </div>
+      `;
+      }
+
+      function renderFormView(config) {
+        return `
+        <div class="min-h-full p-6">
+          <div class="max-w-6xl mx-auto">
+            <div class="surface rounded-2xl shadow-xl p-8">
+              <div class="flex justify-between items-center mb-8">
+                <h1 class="title-text text-content font-bold">📝 ${currentPatientId ? "Edit Data Pasien" : "Data Pasien Baru"}</h1>
+                <button onclick="backToList()" class="secondary-btn text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90">
+                  ← Kembali
+                </button>
+              </div>
+
+              <div class="flex gap-2 mb-8 border-b-2 overflow-x-auto pb-2">
+                <button onclick="switchTab('patient')" class="px-6 py-3 font-semibold transition rounded-t-lg whitespace-nowrap ${activeTab === "patient" ? "border-b-4" : "opacity-50"}" style="${
+          activeTab === "patient" ? `border-color: ${config.primary_action_color || defaultConfig.primary_action_color}; background: ${config.primary_action_color || defaultConfig.primary_action_color}20` : ""
+        }">
+                  👤 Master Data
+                </button>
+                <button onclick="switchTab('signin')" class="px-6 py-3 font-semibold transition rounded-t-lg whitespace-nowrap ${activeTab === "signin" ? "border-b-4" : "opacity-50"}" style="${
+          activeTab === "signin" ? `border-color: ${config.primary_action_color || defaultConfig.primary_action_color}; background: ${config.primary_action_color || defaultConfig.primary_action_color}20` : ""
+        }">
+                  ✅ Sign In
+                </button>
+                <button onclick="switchTab('praanestesi')" class="px-6 py-3 font-semibold transition rounded-t-lg whitespace-nowrap ${activeTab === "praanestesi" ? "border-b-4" : "opacity-50"}" style="${
+          activeTab === "praanestesi" ? `border-color: ${config.primary_action_color || defaultConfig.primary_action_color}; background: ${config.primary_action_color || defaultConfig.primary_action_color}20` : ""
+        }">
+                  🩺 Pra Anestesi
+                </button>
+                <button onclick="switchTab('intraanestesi')" class="px-6 py-3 font-semibold transition rounded-t-lg whitespace-nowrap ${activeTab === "intraanestesi" ? "border-b-4" : "opacity-50"}" style="${
+          activeTab === "intraanestesi" ? `border-color: ${config.primary_action_color || defaultConfig.primary_action_color}; background: ${config.primary_action_color || defaultConfig.primary_action_color}20` : ""
+        }">
+                  💉 Intra Anestesi
+                </button>
+                <button onclick="switchTab('pascaanestesi')" class="px-6 py-3 font-semibold transition rounded-t-lg whitespace-nowrap ${activeTab === "pascaanestesi" ? "border-b-4" : "opacity-50"}" style="${
+          activeTab === "pascaanestesi" ? `border-color: ${config.primary_action_color || defaultConfig.primary_action_color}; background: ${config.primary_action_color || defaultConfig.primary_action_color}20` : ""
+        }">
+                  🏥 Pasca Anestesi
+                </button>
+                <button onclick="switchTab('laporan')" class="px-6 py-3 font-semibold transition rounded-t-lg whitespace-nowrap ${activeTab === "laporan" ? "border-b-4" : "opacity-50"}" style="${
+          activeTab === "laporan" ? `border-color: ${config.primary_action_color || defaultConfig.primary_action_color}; background: ${config.primary_action_color || defaultConfig.primary_action_color}20` : ""
+        }">
+                  📋 Laporan
+                </button>
+              </div>
+
+              <form id="assessmentForm" onsubmit="saveForm(event)" class="space-y-6">
+                ${renderTabContent(activeTab, config)}
+
+                <div class="flex gap-4 justify-end pt-6 border-t-2">
+                  <button type="button" onclick="backToList()" class="secondary-btn text-white px-8 py-3 rounded-xl font-bold hover:opacity-90">
+                    ❌ Batal
+                  </button>
+                  <button type="submit" class="primary-btn text-white px-8 py-3 rounded-xl font-bold hover:opacity-90 shadow-lg">
+                    💾 Simpan Data
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      `;
+      }
+
+      function renderTabContent(tab, config) {
+        if (tab === "patient") {
+          const autoPatientId = formData.patient_id || "RM" + Date.now();
+          const autoOperationId = formData.operation_id || "OP" + Date.now();
+          const calculatedAge = formData.birth_date ? calculateAge(formData.birth_date) : "";
+
+          return `
+          <div class="grid md:grid-cols-2 gap-6">
+            <div>
+              <label class="body-text text-content font-semibold block mb-2">Nama Pasien *</label>
+              <input type="text" name="name" value="${formData.name || ""}" required class="w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:ring-blue-400">
+            </div>
+            <div>
+              <label class="body-text text-content font-semibold block mb-2">No. Rekam Medis (Auto Generate) *</label>
+              <input type="text" name="patient_id" value="${autoPatientId}" required readonly class="w-full px-4 py-3 border-2 rounded-lg bg-gray-100 cursor-not-allowed">
+            </div>
+            <div>
+              <label class="body-text text-content font-semibold block mb-2">Tanggal Lahir *</label>
+              <input type="date" name="birth_date" value="${formData.birth_date || ""}" onchange="updateAge(this.value)" required class="w-full px-4 py-3 border-2 rounded-lg">
+            </div>
+            <div>
+              <label class="body-text text-content font-semibold block mb-2">Usia</label>
+              <input type="text" id="ageDisplay" value="${calculatedAge ? calculatedAge + " tahun" : ""}" readonly class="w-full px-4 py-3 border-2 rounded-lg bg-gray-100 cursor-not-allowed">
+            </div>
+            <div>
+              <label class="body-text text-content font-semibold block mb-2">Jenis Kelamin *</label>
+              <select name="gender" required class="w-full px-4 py-3 border-2 rounded-lg">
+                <option value="">Pilih...</option>
+                <option value="L" ${formData.gender === "L" ? "selected" : ""}>Laki-laki</option>
+                <option value="P" ${formData.gender === "P" ? "selected" : ""}>Perempuan</option>
+              </select>
+            </div>
+            <div>
+              <label class="body-text text-content font-semibold block mb-2">ID Operasi (Auto Generate) *</label>
+              <input type="text" name="operation_id" value="${autoOperationId}" required readonly class="w-full px-4 py-3 border-2 rounded-lg bg-gray-100 cursor-not-allowed">
+            </div>
+            <div class="md:col-span-2">
+              <label class="body-text text-content font-semibold block mb-2">Diagnosa Medis *</label>
+              <textarea name="medical_diagnosis" required class="w-full px-4 py-3 border-2 rounded-lg" rows="3">${formData.medical_diagnosis || ""}</textarea>
+            </div>
+            <div class="md:col-span-2">
+              <label class="body-text text-content font-semibold block mb-2">Nama Tindakan *</label>
+              <input type="text" name="procedure_name" value="${formData.procedure_name || ""}" required class="w-full px-4 py-3 border-2 rounded-lg">
+            </div>
+          </div>
+        `;
+        } else if (tab === "signin") {
+          return `
+          <div class="bg-blue-50 rounded-xl p-6 space-y-6">
+            <div class="bg-white rounded-lg p-6 border-2 border-blue-200">
+              <h3 class="subtitle-text text-content font-bold mb-6">✅ Checklist Sign In</h3>
+              
+              <div class="space-y-4">
+                <div class="flex items-center gap-4 p-4 border-2 rounded-lg hover:bg-blue-50 transition">
+                  <input type="checkbox" name="konfirmasi_identitas" class="checkbox-large" ${formData.konfirmasi_identitas ? "checked" : ""}>
+                  <label class="body-text text-content flex-1">Konfirmasi Identitas</label>
+                </div>
+
+                <div class="p-4 border-2 rounded-lg bg-white">
+                  <label class="body-text text-content font-semibold block mb-3">Konfirmasi Penandaan Lokasi Operasi</label>
+                  <div class="flex gap-6">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="konfirmasi_lokasi" value="Yes" ${formData.konfirmasi_lokasi === "Yes" ? "checked" : ""} class="w-5 h-5">
+                      <span class="body-text">Yes</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="konfirmasi_lokasi" value="Not Applicable" ${formData.konfirmasi_lokasi === "Not Applicable" ? "checked" : ""} class="w-5 h-5">
+                      <span class="body-text">Not Applicable</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-4 p-4 border-2 rounded-lg hover:bg-blue-50 transition">
+                  <input type="checkbox" name="mesin_obat_ready" class="checkbox-large" ${formData.mesin_obat_ready ? "checked" : ""}>
+                  <label class="body-text text-content flex-1">Mesin dan Obat Anestesi Ready</label>
+                </div>
+
+                <div class="flex items-center gap-4 p-4 border-2 rounded-lg hover:bg-blue-50 transition">
+                  <input type="checkbox" name="oksimeter_terpasang" class="checkbox-large" ${formData.oksimeter_terpasang ? "checked" : ""}>
+                  <label class="body-text text-content flex-1">Pasien Terpasang Oksimeter dan Berfungsi</label>
+                </div>
+
+                <div class="flex items-center gap-4 p-4 border-2 rounded-lg hover:bg-blue-50 transition">
+                  <input type="checkbox" name="informed_consent" class="checkbox-large" ${formData.informed_consent ? "checked" : ""}>
+                  <label class="body-text text-content flex-1">Informed Consent</label>
+                </div>
+
+                <div class="p-4 border-2 rounded-lg bg-white">
+                  <label class="body-text text-content font-semibold block mb-3">Alergi</label>
+                  <div class="flex gap-6">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="alergi" value="Ya" ${formData.alergi === "Ya" ? "checked" : ""} class="w-5 h-5">
+                      <span class="body-text">Ya</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="alergi" value="Tidak" ${formData.alergi === "Tidak" ? "checked" : ""} class="w-5 h-5">
+                      <span class="body-text">Tidak</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="p-4 border-2 rounded-lg bg-white">
+                  <label class="body-text text-content font-semibold block mb-3">Risiko Airway</label>
+                  <div class="flex gap-6 mb-3">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="risiko_airway" value="Ya" ${formData.risiko_airway === "Ya" ? "checked" : ""} class="w-5 h-5">
+                      <span class="body-text">Ya</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="risiko_airway" value="Tidak" ${formData.risiko_airway === "Tidak" ? "checked" : ""} class="w-5 h-5">
+                      <span class="body-text">Tidak</span>
+                    </label>
+                  </div>
+                  <input type="text" name="risiko_airway_note" value="${formData.risiko_airway_note || ""}" placeholder="Intubasi" class="w-full px-3 py-2 border rounded-lg text-sm">
+                </div>
+
+                <div class="p-4 border-2 rounded-lg bg-white">
+                  <label class="body-text text-content font-semibold block mb-3">Risiko Perdarahan</label>
+                  <div class="flex gap-6 mb-3">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="risiko_perdarahan" value="Ya" ${formData.risiko_perdarahan === "Ya" ? "checked" : ""} class="w-5 h-5">
+                      <span class="body-text">Ya</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="risiko_perdarahan" value="Tidak" ${formData.risiko_perdarahan === "Tidak" ? "checked" : ""} class="w-5 h-5">
+                      <span class="body-text">Tidak</span>
+                    </label>
+                  </div>
+                  <input type="text" name="risiko_perdarahan_note" value="${formData.risiko_perdarahan_note || ""}" placeholder="Manajemen cairan" class="w-full px-3 py-2 border rounded-lg text-sm">
+                </div>
+
+                <div class="p-4 border-2 rounded-lg bg-white">
+                  <label class="body-text text-content font-semibold block mb-3">Puasa Sesuai</label>
+                  <div class="flex gap-6 mb-3">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="puasa_sesuai" value="Ya" ${formData.puasa_sesuai === "Ya" ? "checked" : ""} class="w-5 h-5">
+                      <span class="body-text">Ya</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="puasa_sesuai" value="Tidak" ${formData.puasa_sesuai === "Tidak" ? "checked" : ""} class="w-5 h-5">
+                      <span class="body-text">Tidak</span>
+                    </label>
+                  </div>
+                  <input type="text" name="puasa_sesuai_note" value="${formData.puasa_sesuai_note || ""}" placeholder="Aspirasi" class="w-full px-3 py-2 border rounded-lg text-sm">
+                </div>
+
+                <div class="flex items-center gap-4 p-4 border-2 rounded-lg hover:bg-blue-50 transition">
+                  <input type="checkbox" name="checklist_lengkap" class="checkbox-large" ${formData.checklist_lengkap ? "checked" : ""}>
+                  <label class="body-text text-content flex-1 font-bold">Checklist Lengkap</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-lg p-6 border-2 border-blue-200">
+              <h3 class="body-text text-content font-bold mb-4">👤 User Sign In</h3>
+              <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Waktu Sign In *</label>
+                  <input type="datetime-local" name="waktu_sign_in" value="${formData.waktu_sign_in || ""}" required class="w-full px-4 py-3 border-2 rounded-lg">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Nama User *</label>
+                  <input type="text" name="user_sign_in_nama" value="${formData.user_sign_in_nama || ""}" required class="w-full px-4 py-3 border-2 rounded-lg" placeholder="Nama lengkap">
+                </div>
+                <div class="md:col-span-2">
+                  <label class="body-text text-content font-semibold block mb-2">Email User *</label>
+                  <input type="email" name="user_sign_in_email" value="${formData.user_sign_in_email || ""}" required class="w-full px-4 py-3 border-2 rounded-lg" placeholder="user@email.com">
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        } else if (tab === "praanestesi") {
+          return `
+          <div class="space-y-6">
+            <!-- Data Dasar Asesmen -->
+            <div class="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6 border-2 border-purple-200">
+              <h3 class="subtitle-text text-content font-bold mb-6">📋 Data Dasar Asesmen</h3>
+              <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Dokter Anestesi *</label>
+                  <input type="email" name="dokter_anestesi" value="${formData.dokter_anestesi || ""}" required class="w-full px-4 py-3 border-2 rounded-lg" placeholder="dokter@email.com">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Waktu Asesmen *</label>
+                  <input type="datetime-local" name="waktu_asesmen" value="${formData.waktu_asesmen || ""}" required class="w-full px-4 py-3 border-2 rounded-lg">
+                </div>
+              </div>
+            </div>
+
+            <!-- Klasifikasi ASA & Status Fisik -->
+            <div class="bg-white rounded-xl p-6 border-2 border-gray-200">
+              <h3 class="subtitle-text text-content font-bold mb-6">🏥 Klasifikasi ASA & Status Fisik</h3>
+              <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">ASA Score *</label>
+                  <select name="asa_score" required class="w-full px-4 py-3 border-2 rounded-lg">
+                    <option value="">Pilih...</option>
+                    <option value="ASA I" ${formData.asa_score === "ASA I" ? "selected" : ""}>ASA I - Pasien Sehat</option>
+                    <option value="ASA II" ${formData.asa_score === "ASA II" ? "selected" : ""}>ASA II - Penyakit Sistemik Ringan</option>
+                    <option value="ASA III" ${formData.asa_score === "ASA III" ? "selected" : ""}>ASA III - Penyakit Sistemik Berat</option>
+                    <option value="ASA IV" ${formData.asa_score === "ASA IV" ? "selected" : ""}>ASA IV - Ancaman Jiwa</option>
+                    <option value="ASA V" ${formData.asa_score === "ASA V" ? "selected" : ""}>ASA V - Moribund</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Status Fisik Umum</label>
+                  <input type="text" name="status_fisik" value="${formData.status_fisik || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="Baik">
+                </div>
+                <div class="md:col-span-2">
+                  <label class="body-text text-content font-semibold block mb-2">Penyakit Penyerta</label>
+                  <textarea name="penyakit_penyerta" class="w-full px-4 py-3 border-2 rounded-lg" rows="2" placeholder="Tidak ada">${formData.penyakit_penyerta || ""}</textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tanda-tanda Vital -->
+            <div class="bg-red-50 rounded-xl p-6 border-2 border-red-200">
+              <h3 class="subtitle-text text-content font-bold mb-6">❤️ Tanda-tanda Vital</h3>
+              <div class="grid md:grid-cols-3 gap-6">
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Tekanan Darah Sistol (mmHg)</label>
+                  <input type="text" name="td_sistol" value="${formData.td_sistol || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="120">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Tekanan Darah Diastol (mmHg)</label>
+                  <input type="text" name="td_diastol" value="${formData.td_diastol || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="80">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Nadi (x/menit)</label>
+                  <input type="text" name="nadi" value="${formData.nadi || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="80">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Suhu (°C)</label>
+                  <input type="text" name="suhu" value="${formData.suhu || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="36.5">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Respirasi (x/menit)</label>
+                  <input type="text" name="respirasi" value="${formData.respirasi || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="20">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Skala Nyeri (0-10)</label>
+                  <input type="number" name="skala_nyeri" value="${formData.skala_nyeri || ""}" min="0" max="10" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="0">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Saturasi O2 (%)</label>
+                  <input type="text" name="saturasi_o2" value="${formData.saturasi_o2 || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="99">
+                </div>
+              </div>
+            </div>
+
+            <!-- Penilaian Risiko -->
+            <div class="bg-yellow-50 rounded-xl p-6 border-2 border-yellow-200">
+              <h3 class="subtitle-text text-content font-bold mb-6">⚠️ Penilaian Risiko</h3>
+              <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                  <label class="body-text text-content font-semibold block mb-3">Alergi</label>
+                  <div class="flex gap-6">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="alergi_pra" value="Ya" ${formData.alergi_pra === "Ya" ? "checked" : ""} class="w-5 h-5">
+                      <span class="body-text">Ya</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="alergi_pra" value="Tidak" ${formData.alergi_pra === "Tidak" ? "checked" : ""} class="w-5 h-5">
+                      <span class="body-text">Tidak</span>
+                    </label>
+                  </div>
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-3">Risiko Airway Sulit</label>
+                  <div class="flex gap-6">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="risiko_airway_pra" value="Ya" ${formData.risiko_airway_pra === "Ya" ? "checked" : ""} class="w-5 h-5">
+                      <span class="body-text">Ya</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="risiko_airway_pra" value="Tidak" ${formData.risiko_airway_pra === "Tidak" ? "checked" : ""} class="w-5 h-5">
+                      <span class="body-text">Tidak</span>
+                    </label>
+                  </div>
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-3">Risiko Perdarahan >500ml</label>
+                  <div class="flex gap-6">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="risiko_perdarahan_pra" value="Ya" ${formData.risiko_perdarahan_pra === "Ya" ? "checked" : ""} class="w-5 h-5">
+                      <span class="body-text">Ya</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="risiko_perdarahan_pra" value="Tidak" ${formData.risiko_perdarahan_pra === "Tidak" ? "checked" : ""} class="w-5 h-5">
+                      <span class="body-text">Tidak</span>
+                    </label>
+                  </div>
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-3">Status Puasa</label>
+                  <div class="flex gap-6">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="status_puasa" value="Ya" ${formData.status_puasa === "Ya" ? "checked" : ""} class="w-5 h-5">
+                      <span class="body-text">Ya</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="status_puasa" value="Tidak" ${formData.status_puasa === "Tidak" ? "checked" : ""} class="w-5 h-5">
+                      <span class="body-text">Tidak</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pemeriksaan Airway -->
+            <div class="bg-green-50 rounded-xl p-6 border-2 border-green-200">
+              <h3 class="subtitle-text text-content font-bold mb-6">👄 Pemeriksaan Airway</h3>
+              <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Mallampati Score</label>
+                  <select name="mallampati" class="w-full px-4 py-3 border-2 rounded-lg">
+                    <option value="">Pilih...</option>
+                    <option value="Kelas I" ${formData.mallampati === "Kelas I" ? "selected" : ""}>Kelas I</option>
+                    <option value="Kelas II" ${formData.mallampati === "Kelas II" ? "selected" : ""}>Kelas II</option>
+                    <option value="Kelas III" ${formData.mallampati === "Kelas III" ? "selected" : ""}>Kelas III</option>
+                    <option value="Kelas IV" ${formData.mallampati === "Kelas IV" ? "selected" : ""}>Kelas IV</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-3">Gigi Palsu</label>
+                  <div class="flex gap-6">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="gigi_palsu" value="Ya" ${formData.gigi_palsu === "Ya" ? "checked" : ""} class="w-5 h-5">
+                      <span class="body-text">Ya</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="gigi_palsu" value="Tidak" ${formData.gigi_palsu === "Tidak" ? "checked" : ""} class="w-5 h-5">
+                      <span class="body-text">Tidak</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pemeriksaan Penunjang -->
+            <div class="bg-indigo-50 rounded-xl p-6 border-2 border-indigo-200">
+              <h3 class="subtitle-text text-content font-bold mb-6">🔬 Pemeriksaan Penunjang</h3>
+              <div class="grid md:grid-cols-2 gap-6">
+                <div class="md:col-span-2">
+                  <label class="body-text text-content font-semibold block mb-2">Lab Relevan</label>
+                  <textarea name="lab_relevan" class="w-full px-4 py-3 border-2 rounded-lg" rows="2" placeholder="dbn">${formData.lab_relevan || ""}</textarea>
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-3">EKG</label>
+                  <div class="flex gap-6">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="ekg" value="Tidak" ${formData.ekg === "Tidak" ? "checked" : ""} class="w-5 h-5">
+                      <span class="body-text">Tidak</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="ekg" value="Ada" ${formData.ekg === "Ada" ? "checked" : ""} class="w-5 h-5">
+                      <span class="body-text">Ada</span>
+                    </label>
+                  </div>
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Hasil EKG</label>
+                  <input type="text" name="ekg_hasil" value="${formData.ekg_hasil || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="Normal">
+                </div>
+              </div>
+            </div>
+
+            <!-- Diagnosis & Rencana Anestesi -->
+            <div class="bg-pink-50 rounded-xl p-6 border-2 border-pink-200">
+              <h3 class="subtitle-text text-content font-bold mb-6">💉 Diagnosis & Rencana Anestesi</h3>
+              <div class="space-y-4">
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Diagnosis Anestesi</label>
+                  <textarea name="diagnosis_anestesi" class="w-full px-4 py-3 border-2 rounded-lg" rows="2">${formData.diagnosis_anestesi || ""}</textarea>
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Kemungkinan Penyulit Anestesi/Sedasi</label>
+                  <textarea name="penyulit_anestesi" class="w-full px-4 py-3 border-2 rounded-lg" rows="2">${formData.penyulit_anestesi || ""}</textarea>
+                </div>
+                <div class="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <label class="body-text text-content font-semibold block mb-2">Rencana Anestesi</label>
+                    <select name="rencana_anestesi" class="w-full px-4 py-3 border-2 rounded-lg">
+                      <option value="">Pilih...</option>
+                      <option value="GA" ${formData.rencana_anestesi === "GA" ? "selected" : ""}>GA (General Anesthesia)</option>
+                      <option value="Regional" ${formData.rencana_anestesi === "Regional" ? "selected" : ""}>Regional Anesthesia</option>
+                      <option value="Sedasi" ${formData.rencana_anestesi === "Sedasi" ? "selected" : ""}>Sedasi</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="body-text text-content font-semibold block mb-2">Rencana Airway</label>
+                    <select name="rencana_airway" class="w-full px-4 py-3 border-2 rounded-lg">
+                      <option value="">Pilih...</option>
+                      <option value="Mask" ${formData.rencana_airway === "Mask" ? "selected" : ""}>Mask</option>
+                      <option value="LMA" ${formData.rencana_airway === "LMA" ? "selected" : ""}>LMA</option>
+                      <option value="ETT" ${formData.rencana_airway === "ETT" ? "selected" : ""}>ETT</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Rencana Analgesia</label>
+                  <textarea name="rencana_analgesia" class="w-full px-4 py-3 border-2 rounded-lg" rows="2">${formData.rencana_analgesia || ""}</textarea>
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Rencana Perawatan Pasca Anestesia</label>
+                  <textarea name="rencana_perawatan" class="w-full px-4 py-3 border-2 rounded-lg" rows="2">${formData.rencana_perawatan || ""}</textarea>
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Catatan Persiapan Pra Anestesi/Sedasi</label>
+                  <textarea name="catatan_persiapan" class="w-full px-4 py-3 border-2 rounded-lg" rows="3">${formData.catatan_persiapan || ""}</textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- Keputusan Kelayakan Operasi -->
+            <div class="bg-orange-50 rounded-xl p-6 border-2 border-orange-200">
+              <h3 class="subtitle-text text-content font-bold mb-6">✅ Keputusan Kelayakan Operasi</h3>
+              <div>
+                <label class="body-text text-content font-semibold block mb-3">Status Kelayakan *</label>
+                <div class="flex gap-6">
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="status_kelayakan" value="Layak" ${formData.status_kelayakan === "Layak" ? "checked" : ""} required class="w-5 h-5">
+                    <span class="body-text">Layak</span>
+                  </label>
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="status_kelayakan" value="Tunda" ${formData.status_kelayakan === "Tunda" ? "checked" : ""} required class="w-5 h-5">
+                    <span class="body-text">Tunda</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Edukasi & Informed Consent -->
+            <div class="bg-teal-50 rounded-xl p-6 border-2 border-teal-200">
+              <h3 class="subtitle-text text-content font-bold mb-6">📖 Edukasi & Informed Consent</h3>
+              <div class="space-y-4">
+                <div class="flex items-center gap-4 p-4 border-2 rounded-lg bg-white">
+                  <input type="checkbox" name="edukasi_diberikan" class="checkbox-large" ${formData.edukasi_diberikan ? "checked" : ""}>
+                  <label class="body-text text-content flex-1 font-semibold">Edukasi Sudah Diberikan</label>
+                </div>
+                <div class="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <label class="body-text text-content font-semibold block mb-2">Metode Edukasi</label>
+                    <select name="metode_edukasi" class="w-full px-4 py-3 border-2 rounded-lg">
+                      <option value="">Pilih...</option>
+                      <option value="Leaflet" ${formData.metode_edukasi === "Leaflet" ? "selected" : ""}>Leaflet</option>
+                      <option value="Verbal" ${formData.metode_edukasi === "Verbal" ? "selected" : ""}>Verbal</option>
+                      <option value="Video" ${formData.metode_edukasi === "Video" ? "selected" : ""}>Video</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="body-text text-content font-semibold block mb-3">Pasien Memahami</label>
+                    <div class="flex gap-6">
+                      <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="pasien_memahami" value="Ya" ${formData.pasien_memahami === "Ya" ? "checked" : ""} class="w-5 h-5">
+                        <span class="body-text">Ya</span>
+                      </label>
+                      <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="pasien_memahami" value="Tidak" ${formData.pasien_memahami === "Tidak" ? "checked" : ""} class="w-5 h-5">
+                        <span class="body-text">Tidak</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Materi Edukasi</label>
+                  <textarea name="materi_edukasi" class="w-full px-4 py-3 border-2 rounded-lg" rows="3">${formData.materi_edukasi || ""}</textarea>
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Pertanyaan Pasien</label>
+                  <textarea name="pertanyaan_pasien" class="w-full px-4 py-3 border-2 rounded-lg" rows="2">${formData.pertanyaan_pasien || ""}</textarea>
+                </div>
+                <div class="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <label class="body-text text-content font-semibold block mb-2">Tanggal Consent</label>
+                    <input type="date" name="tanggal_consent" value="${formData.tanggal_consent || ""}" class="w-full px-4 py-3 border-2 rounded-lg">
+                  </div>
+                  <div>
+                    <label class="body-text text-content font-semibold block mb-2">Pemberi Edukasi</label>
+                    <input type="email" name="pemberi_edukasi" value="${formData.pemberi_edukasi || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="dokter@email.com">
+                  </div>
+                </div>
+                <div class="flex items-center gap-4 p-4 border-2 rounded-lg bg-white">
+                  <input type="checkbox" name="consent_ditandatangani" class="checkbox-large" ${formData.consent_ditandatangani ? "checked" : ""}>
+                  <label class="body-text text-content flex-1 font-semibold">Informed Consent Ditandatangani</label>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        } else if (tab === "intraanestesi") {
+          const patientMonitoring = monitoringRecords.filter((m) => m.operation_id === (formData.operation_id || "unknown")).sort((a, b) => new Date(a.monitoring_waktu) - new Date(b.monitoring_waktu));
+
+          return `
+          <div class="space-y-6">
+            <!-- Timeline Operasi -->
+            <div class="bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl p-6 border-2 border-cyan-200">
+              <h3 class="subtitle-text text-content font-bold mb-6">⏰ Timeline Operasi</h3>
+              <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Waktu Masuk OK</label>
+                  <input type="datetime-local" name="waktu_masuk_ok" value="${formData.waktu_masuk_ok || ""}" class="w-full px-4 py-3 border-2 rounded-lg">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Waktu Induksi</label>
+                  <input type="datetime-local" name="waktu_induksi" value="${formData.waktu_induksi || ""}" class="w-full px-4 py-3 border-2 rounded-lg">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Waktu Incisi</label>
+                  <input type="datetime-local" name="waktu_incisi" value="${formData.waktu_incisi || ""}" class="w-full px-4 py-3 border-2 rounded-lg">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Waktu Selesai Operasi</label>
+                  <input type="datetime-local" name="waktu_selesai_operasi" value="${formData.waktu_selesai_operasi || ""}" class="w-full px-4 py-3 border-2 rounded-lg">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Waktu Keluar OK</label>
+                  <input type="datetime-local" name="waktu_keluar_ok" value="${formData.waktu_keluar_ok || ""}" class="w-full px-4 py-3 border-2 rounded-lg">
+                </div>
+              </div>
+            </div>
+
+            <!-- Teknik Anestesi -->
+            <div class="bg-purple-50 rounded-xl p-6 border-2 border-purple-200">
+              <h3 class="subtitle-text text-content font-bold mb-6">💉 Teknik Anestesi</h3>
+              <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Teknik Anestesi</label>
+                  <select name="teknik_anestesi" class="w-full px-4 py-3 border-2 rounded-lg">
+                    <option value="">Pilih...</option>
+                    <option value="GA" ${formData.teknik_anestesi === "GA" ? "selected" : ""}>General Anesthesia (GA)</option>
+                    <option value="Spinal" ${formData.teknik_anestesi === "Spinal" ? "selected" : ""}>Spinal</option>
+                    <option value="Epidural" ${formData.teknik_anestesi === "Epidural" ? "selected" : ""}>Epidural</option>
+                    <option value="Regional" ${formData.teknik_anestesi === "Regional" ? "selected" : ""}>Regional Block</option>
+                    <option value="Sedasi" ${formData.teknik_anestesi === "Sedasi" ? "selected" : ""}>Sedasi</option>
+                    <option value="Kombinasi" ${formData.teknik_anestesi === "Kombinasi" ? "selected" : ""}>Kombinasi</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Jenis Airway</label>
+                  <select name="jenis_airway" class="w-full px-4 py-3 border-2 rounded-lg">
+                    <option value="">Pilih...</option>
+                    <option value="ETT" ${formData.jenis_airway === "ETT" ? "selected" : ""}>ETT (Endotracheal Tube)</option>
+                    <option value="LMA" ${formData.jenis_airway === "LMA" ? "selected" : ""}>LMA (Laryngeal Mask Airway)</option>
+                    <option value="Mask" ${formData.jenis_airway === "Mask" ? "selected" : ""}>Face Mask</option>
+                    <option value="Nasal" ${formData.jenis_airway === "Nasal" ? "selected" : ""}>Nasal Cannula</option>
+                    <option value="N/A" ${formData.jenis_airway === "N/A" ? "selected" : ""}>N/A</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Ukuran ETT (jika ETT)</label>
+                  <input type="text" name="ukuran_ett" value="${formData.ukuran_ett || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="7.0 mm">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Kedalaman ETT (cm)</label>
+                  <input type="text" name="kedalaman_ett" value="${formData.kedalaman_ett || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="21 cm">
+                </div>
+              </div>
+            </div>
+
+            <!-- Tabel Monitoring -->
+            <div class="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border-2 border-indigo-200">
+              <div class="flex justify-between items-center mb-6">
+                <h3 class="subtitle-text text-content font-bold">📊 Monitoring Intra Operatif</h3>
+                <button type="button" onclick="showMonitoringModal()" class="primary-btn text-white px-6 py-3 rounded-xl font-bold hover:opacity-90 shadow-lg">
+                  ➕ Tambah Monitoring
+                </button>
+              </div>
+
+              ${
+                patientMonitoring.length === 0
+                  ? `
+                <div class="text-center py-12 bg-white rounded-xl border-2 border-dashed border-gray-300">
+                  <div class="text-5xl mb-3">📈</div>
+                  <p class="body-text text-content opacity-60">Belum ada data monitoring</p>
+                  <p class="small-text text-content opacity-40">Klik "Tambah Monitoring" untuk merekam vital signs</p>
+                </div>
+              `
+                  : `
+                <div class="overflow-x-auto bg-white rounded-xl shadow-lg">
+                  <table class="w-full">
+                    <thead class="bg-gradient-to-r from-indigo-500 to-purple-500 text-white">
+                      <tr>
+                        <th class="px-4 py-3 text-left font-bold">⏰ Waktu</th>
+                        <th class="px-4 py-3 text-left font-bold">🔄 Fase</th>
+                        <th class="px-4 py-3 text-left font-bold">💉 TD</th>
+                        <th class="px-4 py-3 text-left font-bold">❤️ HR</th>
+                        <th class="px-4 py-3 text-left font-bold">🫁 SpO2</th>
+                        <th class="px-4 py-3 text-left font-bold">🧠 Kesadaran</th>
+                        <th class="px-4 py-3 text-left font-bold">💊 Obat</th>
+                        <th class="px-4 py-3 text-left font-bold">⚙️ Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${patientMonitoring
+                        .map((m, idx) => {
+                          const rowColor = idx % 2 === 0 ? "bg-gray-50" : "bg-white";
+                          return `
+                          <tr class="${rowColor} hover:bg-indigo-50 transition">
+                            <td class="px-4 py-3 font-semibold">${new Date(m.monitoring_waktu).toLocaleString("id-ID", { hour: "2-digit", minute: "2-digit" })}</td>
+                            <td class="px-4 py-3">
+                              <span class="px-2 py-1 rounded-full text-xs font-bold ${
+                                m.monitoring_fase === "Induksi" ? "bg-blue-100 text-blue-700" : m.monitoring_fase === "Maintenance" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
+                              }">${m.monitoring_fase || "-"}</span>
+                            </td>
+                            <td class="px-4 py-3">${m.monitoring_td_sistol}/${m.monitoring_td_diastol}</td>
+                            <td class="px-4 py-3">${m.monitoring_hr}</td>
+                            <td class="px-4 py-3">${m.monitoring_spo2}%</td>
+                            <td class="px-4 py-3 text-sm">${m.monitoring_kesadaran || "-"}</td>
+                            <td class="px-4 py-3 text-sm max-w-xs truncate">${m.monitoring_obat || "-"}</td>
+                            <td class="px-4 py-3">
+                              <button type="button" onclick='deleteMonitoring("${m.__backendId}")' class="bg-red-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-red-600">
+                                🗑️
+                              </button>
+                            </td>
+                          </tr>
+                        `;
+                        })
+                        .join("")}
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Timeline Visual -->
+                <div class="mt-6 bg-white rounded-xl p-6 border-2 border-indigo-200">
+                  <h4 class="body-text text-content font-bold mb-4">📈 Timeline Monitoring Intra Operatif</h4>
+                  <div class="relative">
+                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-400 to-purple-400"></div>
+                    <div class="space-y-4 ml-8">
+                      ${patientMonitoring
+                        .map(
+                          (m, idx) => `
+                        <div class="relative">
+                          <div class="absolute -left-10 w-5 h-5 rounded-full ${m.monitoring_fase === "Induksi" ? "bg-blue-500" : m.monitoring_fase === "Maintenance" ? "bg-green-500" : "bg-orange-500"} border-4 border-white shadow"></div>
+                          <div class="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-lg border-l-4 ${
+                            m.monitoring_fase === "Induksi" ? "border-blue-500" : m.monitoring_fase === "Maintenance" ? "border-green-500" : "border-orange-500"
+                          }">
+                            <div class="flex justify-between items-start mb-3">
+                              <div class="flex items-center gap-3">
+                                <span class="font-bold text-indigo-600">${new Date(m.monitoring_waktu).toLocaleString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
+                                <span class="px-2 py-1 rounded-full text-xs font-bold ${
+                                  m.monitoring_fase === "Induksi" ? "bg-blue-100 text-blue-700" : m.monitoring_fase === "Maintenance" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
+                                }">${m.monitoring_fase || "-"}</span>
+                              </div>
+                              <span class="text-sm text-gray-500">#${idx + 1}</span>
+                            </div>
+                            
+                            <!-- Hemodinamik & Respirasi -->
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-3">
+                              <div><span class="font-semibold">💉 TD:</span> ${m.monitoring_td_sistol}/${m.monitoring_td_diastol} mmHg</div>
+                              <div><span class="font-semibold">❤️ HR:</span> ${m.monitoring_hr} bpm</div>
+                              <div><span class="font-semibold">🫁 SpO2:</span> ${m.monitoring_spo2}%</div>
+                              <div><span class="font-semibold">🌡️ Temp:</span> ${m.monitoring_temp}°C</div>
+                              <div><span class="font-semibold">🫁 RR:</span> ${m.monitoring_rr} x/min</div>
+                              <div><span class="font-semibold">🌡️ EtCO2:</span> ${m.monitoring_etco2} mmHg</div>
+                              <div><span class="font-semibold">📊 EKG:</span> ${m.monitoring_ekg || "-"}</div>
+                              <div><span class="font-semibold">🧠 Kesadaran:</span> ${m.monitoring_kesadaran || "-"}</div>
+                            </div>
+
+                            <!-- Fluid Balance -->
+                            ${
+                              m.monitoring_urine || m.monitoring_cairan_masuk || m.monitoring_perdarahan
+                                ? `
+                              <div class="bg-teal-50 p-3 rounded-lg mb-3">
+                                <div class="font-semibold text-teal-700 mb-2">💧 Fluid Balance:</div>
+                                <div class="grid grid-cols-3 gap-3 text-sm">
+                                  ${m.monitoring_urine ? `<div><span class="font-semibold">Urine:</span> ${m.monitoring_urine} ml</div>` : ""}
+                                  ${m.monitoring_cairan_masuk ? `<div><span class="font-semibold">Cairan:</span> ${m.monitoring_cairan_masuk} ml</div>` : ""}
+                                  ${m.monitoring_perdarahan ? `<div><span class="font-semibold">Perdarahan:</span> ${m.monitoring_perdarahan} ml</div>` : ""}
+                                </div>
+                              </div>
+                            `
+                                : ""
+                            }
+
+                            <!-- Obat -->
+                            ${
+                              m.monitoring_obat
+                                ? `
+                              <div class="bg-yellow-50 p-3 rounded-lg mb-3">
+                                <div class="font-semibold text-yellow-700 mb-1">💊 Obat Diberikan:</div>
+                                <p class="text-sm text-gray-700">${m.monitoring_obat}</p>
+                              </div>
+                            `
+                                : ""
+                            }
+
+                            <!-- Kejadian & Tindakan -->
+                            ${
+                              m.monitoring_kejadian || m.monitoring_tindakan
+                                ? `
+                              <div class="bg-orange-50 p-3 rounded-lg mb-3">
+                                ${
+                                  m.monitoring_kejadian
+                                    ? `
+                                  <div class="mb-2">
+                                    <div class="font-semibold text-orange-700">⚠️ Kejadian:</div>
+                                    <p class="text-sm text-gray-700">${m.monitoring_kejadian}</p>
+                                  </div>
+                                `
+                                    : ""
+                                }
+                                ${
+                                  m.monitoring_tindakan
+                                    ? `
+                                  <div>
+                                    <div class="font-semibold text-orange-700">🔧 Tindakan:</div>
+                                    <p class="text-sm text-gray-700">${m.monitoring_tindakan}</p>
+                                  </div>
+                                `
+                                    : ""
+                                }
+                              </div>
+                            `
+                                : ""
+                            }
+
+                            <!-- Petugas & Catatan -->
+                            <div class="text-xs text-gray-500 mt-2 flex justify-between items-center">
+                              <span>👤 Petugas: ${m.monitoring_petugas || "-"}</span>
+                              ${m.monitoring_catatan ? `<span class="italic">💬 ${m.monitoring_catatan}</span>` : ""}
+                            </div>
+                          </div>
+                        </div>
+                      `
+                        )
+                        .join("")}
+                    </div>
+                  </div>
+                </div>
+              `
+              }
+            </div>
+
+            <!-- Komplikasi & Catatan -->
+            <div class="bg-red-50 rounded-xl p-6 border-2 border-red-200">
+              <h3 class="subtitle-text text-content font-bold mb-6">⚠️ Komplikasi & Catatan Intra</h3>
+              <div class="space-y-4">
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Komplikasi Selama Operasi</label>
+                  <textarea name="komplikasi" class="w-full px-4 py-3 border-2 rounded-lg" rows="3" placeholder="Tidak ada komplikasi / sebutkan jika ada">${formData.komplikasi || ""}</textarea>
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Catatan Intra Anestesi</label>
+                  <textarea name="catatan_intra" class="w-full px-4 py-3 border-2 rounded-lg" rows="4" placeholder="Catatan tambahan selama prosedur anestesi">${formData.catatan_intra || ""}</textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- Kondisi Keluar OK -->
+            <div class="bg-yellow-50 rounded-xl p-6 border-2 border-yellow-200">
+              <h3 class="subtitle-text text-content font-bold mb-6">🚪 Kondisi Keluar OK</h3>
+              <div>
+                <label class="body-text text-content font-semibold block mb-2">Kondisi Pasien Saat Keluar OK</label>
+                <textarea name="kondisi_keluar_ok" class="w-full px-4 py-3 border-2 rounded-lg" rows="3" placeholder="Stabil, sadar penuh, hemodinamik stabil, dll">${formData.kondisi_keluar_ok || ""}</textarea>
+              </div>
+            </div>
+          </div>
+        `;
+        } else if (tab === "pascaanestesi") {
+          const patientObservasi = observasiRecords.filter((o) => o.operation_id === (formData.operation_id || "unknown")).sort((a, b) => new Date(a.observasi_waktu) - new Date(b.observasi_waktu));
+
+          return `
+          <div class="space-y-6">
+            <!-- B. Pengkajian Awal Pasca Operasi -->
+            <div class="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl p-6 border-2 border-teal-200">
+              <h3 class="subtitle-text text-content font-bold mb-6">🏥 B. Pengkajian Awal Pasca Operasi</h3>
+              <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Waktu Masuk RR</label>
+                  <input type="datetime-local" name="waktu_masuk_rr" value="${formData.waktu_masuk_rr || ""}" class="w-full px-4 py-3 border-2 rounded-lg">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Kesadaran</label>
+                  <select name="kesadaran_pasca" class="w-full px-4 py-3 border-2 rounded-lg">
+                    <option value="">Pilih...</option>
+                    <option value="Sadar Penuh" ${formData.kesadaran_pasca === "Sadar Penuh" ? "selected" : ""}>Sadar Penuh</option>
+                    <option value="Somnolen" ${formData.kesadaran_pasca === "Somnolen" ? "selected" : ""}>Somnolen</option>
+                    <option value="Stupor" ${formData.kesadaran_pasca === "Stupor" ? "selected" : ""}>Stupor</option>
+                    <option value="Koma" ${formData.kesadaran_pasca === "Koma" ? "selected" : ""}>Koma</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Jalan Nafas</label>
+                  <select name="jalan_nafas_pasca" class="w-full px-4 py-3 border-2 rounded-lg">
+                    <option value="">Pilih...</option>
+                    <option value="Bebas" ${formData.jalan_nafas_pasca === "Bebas" ? "selected" : ""}>Bebas</option>
+                    <option value="Terpasang ETT" ${formData.jalan_nafas_pasca === "Terpasang ETT" ? "selected" : ""}>Terpasang ETT</option>
+                    <option value="Terpasang LMA" ${formData.jalan_nafas_pasca === "Terpasang LMA" ? "selected" : ""}>Terpasang LMA</option>
+                    <option value="Nasal Kanul" ${formData.jalan_nafas_pasca === "Nasal Kanul" ? "selected" : ""}>Nasal Kanul</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Pernafasan</label>
+                  <select name="pernafasan_pasca" class="w-full px-4 py-3 border-2 rounded-lg">
+                    <option value="">Pilih...</option>
+                    <option value="Spontan Adekuat" ${formData.pernafasan_pasca === "Spontan Adekuat" ? "selected" : ""}>Spontan Adekuat</option>
+                    <option value="Spontan Inadequate" ${formData.pernafasan_pasca === "Spontan Inadequate" ? "selected" : ""}>Spontan Inadequate</option>
+                    <option value="Apnea" ${formData.pernafasan_pasca === "Apnea" ? "selected" : ""}>Apnea</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Sirkulasi</label>
+                  <input type="text" name="sirkulasi_pasca" value="${formData.sirkulasi_pasca || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="Stabil">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Aktivitas</label>
+                  <input type="text" name="aktivitas_pasca" value="${formData.aktivitas_pasca || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="Berbaring">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Skala Nyeri Pasca (0-10)</label>
+                  <input type="number" name="skala_nyeri_pasca" value="${formData.skala_nyeri_pasca || ""}" min="0" max="10" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="0">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-3">Mual/Muntah</label>
+                  <div class="flex gap-6">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="mual_muntah" value="Ya" ${formData.mual_muntah === "Ya" ? "checked" : ""} class="w-5 h-5">
+                      <span class="body-text">Ya</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="mual_muntah" value="Tidak" ${formData.mual_muntah === "Tidak" ? "checked" : ""} class="w-5 h-5">
+                      <span class="body-text">Tidak</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- D. Jenis Operasi & Masuk RR -->
+            <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border-2 border-purple-200">
+              <h3 class="subtitle-text text-content font-bold mb-6">⚕️ D. Jenis Operasi & Timeline</h3>
+              <div class="grid md:grid-cols-2 gap-6">
+                <div class="md:col-span-2">
+                  <label class="body-text text-content font-semibold block mb-2">Jenis Operasi</label>
+                  <input type="text" name="jenis_operasi_pasca" value="${formData.jenis_operasi_pasca || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="Nama operasi yang dilakukan">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Waktu Mulai Operasi</label>
+                  <input type="datetime-local" name="waktu_mulai_operasi" value="${formData.waktu_mulai_operasi || ""}" class="w-full px-4 py-3 border-2 rounded-lg">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Waktu Selesai Operasi</label>
+                  <input type="datetime-local" name="waktu_selesai_operasi_pasca" value="${formData.waktu_selesai_operasi_pasca || ""}" class="w-full px-4 py-3 border-2 rounded-lg">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Lama Operasi (Menit)</label>
+                  <input type="number" name="lama_operasi_menit" value="${formData.lama_operasi_menit || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="120">
+                </div>
+              </div>
+            </div>
+
+            <!-- E. Observasi Tanda Vital (Time Series) -->
+            <div class="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl p-6 border-2 border-orange-200">
+              <div class="flex justify-between items-center mb-6">
+                <h3 class="subtitle-text text-content font-bold">📊 E. Observasi Tanda Vital (Time Series)</h3>
+                <button type="button" onclick="showObservasiModal()" class="primary-btn text-white px-6 py-3 rounded-xl font-bold hover:opacity-90 shadow-lg">
+                  ➕ Tambah Observasi
+                </button>
+              </div>
+
+              ${
+                patientObservasi.length === 0
+                  ? `
+                <div class="text-center py-12 bg-white rounded-xl border-2 border-dashed border-gray-300">
+                  <div class="text-5xl mb-3">📈</div>
+                  <p class="body-text text-content opacity-60">Belum ada data observasi</p>
+                  <p class="small-text text-content opacity-40">Klik "Tambah Observasi" untuk merekam vital signs pasca operasi</p>
+                </div>
+              `
+                  : `
+                <div class="overflow-x-auto bg-white rounded-xl shadow-lg">
+                  <table class="w-full">
+                    <thead class="bg-gradient-to-r from-orange-500 to-yellow-500 text-white">
+                      <tr>
+                        <th class="px-4 py-3 text-left font-bold">⏰ Waktu</th>
+                        <th class="px-4 py-3 text-left font-bold">💉 TD (mmHg)</th>
+                        <th class="px-4 py-3 text-left font-bold">❤️ Nadi (x/min)</th>
+                        <th class="px-4 py-3 text-left font-bold">🫁 RR (x/min)</th>
+                        <th class="px-4 py-3 text-left font-bold">🫁 SpO2 (%)</th>
+                        <th class="px-4 py-3 text-left font-bold">🌡️ Suhu (°C)</th>
+                        <th class="px-4 py-3 text-left font-bold">🧠 Kesadaran</th>
+                        <th class="px-4 py-3 text-left font-bold">📝 Catatan</th>
+                        <th class="px-4 py-3 text-left font-bold">⚙️ Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${patientObservasi
+                        .map((o, idx) => {
+                          const rowColor = idx % 2 === 0 ? "bg-gray-50" : "bg-white";
+                          return `
+                          <tr class="${rowColor} hover:bg-orange-50 transition">
+                            <td class="px-4 py-3 font-semibold">${new Date(o.observasi_waktu).toLocaleString("id-ID", { hour: "2-digit", minute: "2-digit" })}</td>
+                            <td class="px-4 py-3">${o.observasi_td_sistol}/${o.observasi_td_diastol}</td>
+                            <td class="px-4 py-3">${o.observasi_nadi}</td>
+                            <td class="px-4 py-3">${o.observasi_rr}</td>
+                            <td class="px-4 py-3">${o.observasi_spo2}</td>
+                            <td class="px-4 py-3">${o.observasi_suhu}</td>
+                            <td class="px-4 py-3">${o.observasi_kesadaran}</td>
+                            <td class="px-4 py-3 text-sm">${o.observasi_catatan || "-"}</td>
+                            <td class="px-4 py-3">
+                              <button type="button" onclick='deleteObservasi("${o.__backendId}")' class="bg-red-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-red-600">
+                                🗑️
+                              </button>
+                            </td>
+                          </tr>
+                        `;
+                        })
+                        .join("")}
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Timeline Visual Observasi -->
+                <div class="mt-6 bg-white rounded-xl p-6 border-2 border-orange-200">
+                  <h4 class="body-text text-content font-bold mb-4">📈 Timeline Observasi</h4>
+                  <div class="relative">
+                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-orange-400 to-yellow-400"></div>
+                    <div class="space-y-4 ml-8">
+                      ${patientObservasi
+                        .map(
+                          (o, idx) => `
+                        <div class="relative">
+                          <div class="absolute -left-10 w-5 h-5 rounded-full bg-orange-500 border-4 border-white shadow"></div>
+                          <div class="bg-gradient-to-r from-orange-50 to-yellow-50 p-4 rounded-lg border-l-4 border-orange-500">
+                            <div class="flex justify-between items-start mb-2">
+                              <span class="font-bold text-orange-600">${new Date(o.observasi_waktu).toLocaleString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
+                              <span class="text-sm text-gray-500">#${idx + 1}</span>
+                            </div>
+                            <div class="grid grid-cols-4 gap-3 text-sm">
+                              <div><span class="font-semibold">TD:</span> ${o.observasi_td_sistol}/${o.observasi_td_diastol}</div>
+                              <div><span class="font-semibold">Nadi:</span> ${o.observasi_nadi} x/min</div>
+                              <div><span class="font-semibold">SpO2:</span> ${o.observasi_spo2}%</div>
+                              <div><span class="font-semibold">Suhu:</span> ${o.observasi_suhu}°C</div>
+                            </div>
+                            <div class="mt-2 text-sm"><span class="font-semibold">Kesadaran:</span> ${o.observasi_kesadaran}</div>
+                            ${o.observasi_catatan ? `<p class="mt-2 text-sm text-gray-600 italic">💬 ${o.observasi_catatan}</p>` : ""}
+                          </div>
+                        </div>
+                      `
+                        )
+                        .join("")}
+                    </div>
+                  </div>
+                </div>
+              `
+              }
+            </div>
+
+            <!-- F. Pemberian Cairan & Transfusi -->
+            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border-2 border-blue-200">
+              <h3 class="subtitle-text text-content font-bold mb-6">💧 F. Pemberian Cairan & Transfusi</h3>
+              <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Kristaloid (ml)</label>
+                  <input type="text" name="cairan_kristaloid_pasca" value="${formData.cairan_kristaloid_pasca || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="1000">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Koloid (ml)</label>
+                  <input type="text" name="cairan_koloid_pasca" value="${formData.cairan_koloid_pasca || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="500">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Transfusi PRC (unit)</label>
+                  <input type="text" name="transfusi_prc_pasca" value="${formData.transfusi_prc_pasca || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="0">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Transfusi FFP (unit)</label>
+                  <input type="text" name="transfusi_ffp_pasca" value="${formData.transfusi_ffp_pasca || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="0">
+                </div>
+                <div class="md:col-span-2">
+                  <label class="body-text text-content font-semibold block mb-2">Transfusi Lain</label>
+                  <input type="text" name="transfusi_lain" value="${formData.transfusi_lain || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="TC, dll">
+                </div>
+              </div>
+            </div>
+
+            <!-- G. Masalah – Tindakan – Instruksi -->
+            <div class="bg-gradient-to-r from-red-50 to-pink-50 rounded-xl p-6 border-2 border-red-200">
+              <h3 class="subtitle-text text-content font-bold mb-6">⚠️ G. Masalah – Tindakan – Instruksi</h3>
+              <div class="space-y-4">
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Masalah Teridentifikasi</label>
+                  <textarea name="masalah_teridentifikasi" class="w-full px-4 py-3 border-2 rounded-lg" rows="3" placeholder="Sebutkan masalah yang ditemukan di RR">${formData.masalah_teridentifikasi || ""}</textarea>
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Tindakan yang Dilakukan</label>
+                  <textarea name="tindakan_dilakukan" class="w-full px-4 py-3 border-2 rounded-lg" rows="3" placeholder="Tindakan untuk mengatasi masalah">${formData.tindakan_dilakukan || ""}</textarea>
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Instruksi Dokter Anestesi</label>
+                  <textarea name="instruksi_dokter" class="w-full px-4 py-3 border-2 rounded-lg" rows="3" placeholder="Instruksi khusus dari dokter anestesi">${formData.instruksi_dokter || ""}</textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- H. Output Urine -->
+            <div class="bg-gradient-to-r from-yellow-50 to-amber-50 rounded-xl p-6 border-2 border-yellow-200">
+              <h3 class="subtitle-text text-content font-bold mb-6">💧 H. Output Urine</h3>
+              <div class="grid md:grid-cols-3 gap-6">
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Total Output Urine (ml)</label>
+                  <input type="text" name="output_urine_total" value="${formData.output_urine_total || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="300">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Waktu Mulai Ukur</label>
+                  <input type="datetime-local" name="waktu_mulai_urine" value="${formData.waktu_mulai_urine || ""}" class="w-full px-4 py-3 border-2 rounded-lg">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Waktu Akhir Ukur</label>
+                  <input type="datetime-local" name="waktu_akhir_urine" value="${formData.waktu_akhir_urine || ""}" class="w-full px-4 py-3 border-2 rounded-lg">
+                </div>
+              </div>
+            </div>
+
+            <!-- I. Skor Pemulihan -->
+            <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 border-2 border-green-200">
+              <h3 class="subtitle-text text-content font-bold mb-6">📊 I. Skor Pemulihan (Aldrete/Bromage/Steward)</h3>
+              <div class="grid md:grid-cols-3 gap-6">
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Skor Aldrete</label>
+                  <input type="number" name="skor_aldrete" value="${formData.skor_aldrete || ""}" min="0" max="10" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="9">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Skor Bromage</label>
+                  <input type="number" name="skor_bromage" value="${formData.skor_bromage || ""}" min="0" max="3" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="0">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Skor Steward</label>
+                  <input type="number" name="skor_steward" value="${formData.skor_steward || ""}" min="0" max="6" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="6">
+                </div>
+                <div class="md:col-span-3">
+                  <label class="body-text text-content font-semibold block mb-2">Keterangan Skor</label>
+                  <textarea name="keterangan_skor" class="w-full px-4 py-3 border-2 rounded-lg" rows="2" placeholder="Interpretasi dan catatan skor pemulihan">${formData.keterangan_skor || ""}</textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- J. Rencana Ruang Rawat Pasca Operasi -->
+            <div class="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border-2 border-indigo-200">
+              <h3 class="subtitle-text text-content font-bold mb-6">🏥 J. Rencana Ruang Rawat Pasca Operasi</h3>
+              <div class="space-y-4">
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Rencana Ruang Rawat</label>
+                  <select name="rencana_ruang_rawat" class="w-full px-4 py-3 border-2 rounded-lg">
+                    <option value="">Pilih...</option>
+                    <option value="Ruang Rawat Inap Biasa" ${formData.rencana_ruang_rawat === "Ruang Rawat Inap Biasa" ? "selected" : ""}>Ruang Rawat Inap Biasa</option>
+                    <option value="ICU" ${formData.rencana_ruang_rawat === "ICU" ? "selected" : ""}>ICU</option>
+                    <option value="HCU" ${formData.rencana_ruang_rawat === "HCU" ? "selected" : ""}>HCU</option>
+                    <option value="Pulang" ${formData.rencana_ruang_rawat === "Pulang" ? "selected" : ""}>Pulang</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Estimasi Lama Rawat (hari)</label>
+                  <input type="number" name="estimasi_lama_rawat" value="${formData.estimasi_lama_rawat || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="3">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Instruksi Lanjutan</label>
+                  <textarea name="instruksi_lanjutan" class="w-full px-4 py-3 border-2 rounded-lg" rows="3" placeholder="Instruksi perawatan lanjutan untuk ruang rawat">${formData.instruksi_lanjutan || ""}</textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- K. Keluar RR & Tanda Tangan -->
+            <div class="bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl p-6 border-2 border-pink-200">
+              <h3 class="subtitle-text text-content font-bold mb-6">🚪 K. Keluar RR & Tanda Tangan</h3>
+              <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Waktu Keluar RR</label>
+                  <input type="datetime-local" name="waktu_keluar_rr" value="${formData.waktu_keluar_rr || ""}" class="w-full px-4 py-3 border-2 rounded-lg">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Kondisi Keluar RR</label>
+                  <input type="text" name="kondisi_keluar_rr" value="${formData.kondisi_keluar_rr || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="Stabil, siap pindah ruangan">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Perawat RR (Email)</label>
+                  <input type="email" name="perawat_rr" value="${formData.perawat_rr || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="perawat@email.com">
+                </div>
+                <div>
+                  <label class="body-text text-content font-semibold block mb-2">Dokter Anestesi RR (Email)</label>
+                  <input type="email" name="dokter_anestesi_rr" value="${formData.dokter_anestesi_rr || ""}" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="dokter@email.com">
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        } else if (tab === "laporan") {
+          const patientMonitoring = monitoringRecords.filter((m) => m.operation_id === (formData.operation_id || "unknown")).sort((a, b) => new Date(a.monitoring_waktu) - new Date(b.monitoring_waktu));
+
+          const patientObservasi = observasiRecords.filter((o) => o.operation_id === (formData.operation_id || "unknown")).sort((a, b) => new Date(a.observasi_waktu) - new Date(b.observasi_waktu));
+
+          return `
+          <div class="space-y-6">
+            <!-- Header Laporan -->
+            <div class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl p-8 text-center shadow-2xl">
+              <h2 class="text-3xl font-bold mb-2">📋 LAPORAN ANESTESI</h2>
+              <p class="text-xl font-semibold">${formData.name || "-"}</p>
+              <p class="text-lg opacity-90">No. RM: ${formData.patient_id || "-"} | ID Operasi: ${formData.operation_id || "-"}</p>
+              <p class="mt-2 opacity-80">${config.hospital_name || defaultConfig.hospital_name}</p>
+            </div>
+
+            <!-- Tombol Aksi -->
+            <div class="flex gap-3 justify-end no-print">
+              <button type="button" onclick="window.print()" class="primary-btn text-white px-6 py-3 rounded-xl font-bold hover:opacity-90 shadow-lg">
+                🖨️ Cetak Laporan
+              </button>
+              <button type="button" onclick="exportLaporan()" class="secondary-btn text-white px-6 py-3 rounded-xl font-bold hover:opacity-90 shadow-lg">
+                📥 Export PDF
+              </button>
+            </div>
+
+            <!-- A. DATA PASIEN -->
+            <div class="bg-white rounded-xl p-6 border-2 border-gray-200 shadow-lg">
+              <h3 class="text-xl font-bold mb-4 text-indigo-600 border-b-2 pb-2">👤 A. DATA PASIEN</h3>
+              <div class="grid md:grid-cols-2 gap-4">
+                <div class="flex justify-between p-3 bg-gray-50 rounded-lg">
+                  <span class="font-semibold">Nama:</span>
+                  <span>${formData.name || "-"}</span>
+                </div>
+                <div class="flex justify-between p-3 bg-gray-50 rounded-lg">
+                  <span class="font-semibold">No. RM:</span>
+                  <span>${formData.patient_id || "-"}</span>
+                </div>
+                <div class="flex justify-between p-3 bg-gray-50 rounded-lg">
+                  <span class="font-semibold">Tanggal Lahir:</span>
+                  <span>${formData.birth_date ? new Date(formData.birth_date).toLocaleDateString("id-ID") : "-"}</span>
+                </div>
+                <div class="flex justify-between p-3 bg-gray-50 rounded-lg">
+                  <span class="font-semibold">Usia:</span>
+                  <span>${formData.birth_date ? calculateAge(formData.birth_date) + " tahun" : "-"}</span>
+                </div>
+                <div class="flex justify-between p-3 bg-gray-50 rounded-lg">
+                  <span class="font-semibold">Jenis Kelamin:</span>
+                  <span>${formData.gender === "L" ? "Laki-laki" : formData.gender === "P" ? "Perempuan" : "-"}</span>
+                </div>
+                <div class="flex justify-between p-3 bg-gray-50 rounded-lg">
+                  <span class="font-semibold">ID Operasi:</span>
+                  <span>${formData.operation_id || "-"}</span>
+                </div>
+                <div class="flex justify-between p-3 bg-blue-50 rounded-lg md:col-span-2">
+                  <span class="font-semibold">Diagnosa Medis:</span>
+                  <span class="text-right">${formData.medical_diagnosis || "-"}</span>
+                </div>
+                <div class="flex justify-between p-3 bg-blue-50 rounded-lg md:col-span-2">
+                  <span class="font-semibold">Tindakan Operasi:</span>
+                  <span class="text-right">${formData.procedure_name || "-"}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- B. PRA ANESTESI -->
+            <div class="bg-white rounded-xl p-6 border-2 border-gray-200 shadow-lg">
+              <h3 class="text-xl font-bold mb-4 text-purple-600 border-b-2 pb-2">🩺 B. ASESMEN PRA ANESTESI</h3>
+              
+              <div class="mb-4">
+                <h4 class="font-bold text-lg mb-2 text-purple-500">📊 Status Fisik & Klasifikasi</h4>
+                <div class="grid md:grid-cols-2 gap-3">
+                  <div class="p-3 bg-purple-50 rounded-lg">
+                    <span class="font-semibold">ASA Score:</span> ${formData.asa_score || "-"}
+                  </div>
+                  <div class="p-3 bg-purple-50 rounded-lg">
+                    <span class="font-semibold">Status Fisik:</span> ${formData.status_fisik || "-"}
+                  </div>
+                  <div class="p-3 bg-purple-50 rounded-lg md:col-span-2">
+                    <span class="font-semibold">Penyakit Penyerta:</span> ${formData.penyakit_penyerta || "Tidak ada"}
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-4">
+                <h4 class="font-bold text-lg mb-2 text-red-500">❤️ Tanda Vital</h4>
+                <div class="grid md:grid-cols-3 gap-3">
+                  <div class="p-3 bg-red-50 rounded-lg">
+                    <span class="font-semibold">TD:</span> ${formData.td_sistol || "-"}/${formData.td_diastol || "-"} mmHg
+                  </div>
+                  <div class="p-3 bg-red-50 rounded-lg">
+                    <span class="font-semibold">Nadi:</span> ${formData.nadi || "-"} x/menit
+                  </div>
+                  <div class="p-3 bg-red-50 rounded-lg">
+                    <span class="font-semibold">Suhu:</span> ${formData.suhu || "-"} °C
+                  </div>
+                  <div class="p-3 bg-red-50 rounded-lg">
+                    <span class="font-semibold">Respirasi:</span> ${formData.respirasi || "-"} x/menit
+                  </div>
+                  <div class="p-3 bg-red-50 rounded-lg">
+                    <span class="font-semibold">SpO2:</span> ${formData.saturasi_o2 || "-"}%
+                  </div>
+                  <div class="p-3 bg-red-50 rounded-lg">
+                    <span class="font-semibold">Nyeri:</span> ${formData.skala_nyeri || "-"}/10
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-4">
+                <h4 class="font-bold text-lg mb-2 text-yellow-600">⚠️ Penilaian Risiko</h4>
+                <div class="grid md:grid-cols-2 gap-3">
+                  <div class="p-3 bg-yellow-50 rounded-lg">
+                    <span class="font-semibold">Alergi:</span> ${formData.alergi_pra || "-"}
+                  </div>
+                  <div class="p-3 bg-yellow-50 rounded-lg">
+                    <span class="font-semibold">Risiko Airway:</span> ${formData.risiko_airway_pra || "-"}
+                  </div>
+                  <div class="p-3 bg-yellow-50 rounded-lg">
+                    <span class="font-semibold">Risiko Perdarahan:</span> ${formData.risiko_perdarahan_pra || "-"}
+                  </div>
+                  <div class="p-3 bg-yellow-50 rounded-lg">
+                    <span class="font-semibold">Status Puasa:</span> ${formData.status_puasa || "-"}
+                  </div>
+                  <div class="p-3 bg-yellow-50 rounded-lg">
+                    <span class="font-semibold">Mallampati:</span> ${formData.mallampati || "-"}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 class="font-bold text-lg mb-2 text-pink-600">💉 Rencana Anestesi</h4>
+                <div class="grid md:grid-cols-2 gap-3">
+                  <div class="p-3 bg-pink-50 rounded-lg">
+                    <span class="font-semibold">Teknik:</span> ${formData.rencana_anestesi || "-"}
+                  </div>
+                  <div class="p-3 bg-pink-50 rounded-lg">
+                    <span class="font-semibold">Airway:</span> ${formData.rencana_airway || "-"}
+                  </div>
+                  <div class="p-3 bg-pink-50 rounded-lg md:col-span-2">
+                    <span class="font-semibold">Analgesia:</span> ${formData.rencana_analgesia || "-"}
+                  </div>
+                  <div class="p-3 bg-pink-50 rounded-lg md:col-span-2">
+                    <span class="font-semibold">Status Kelayakan:</span> <strong>${formData.status_kelayakan || "-"}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- C. INTRA ANESTESI -->
+            <div class="bg-white rounded-xl p-6 border-2 border-gray-200 shadow-lg">
+              <h3 class="text-xl font-bold mb-4 text-cyan-600 border-b-2 pb-2">💉 C. INTRA ANESTESI</h3>
+              
+              <div class="mb-4">
+                <h4 class="font-bold text-lg mb-2 text-cyan-500">⏰ Timeline Operasi</h4>
+                <div class="grid md:grid-cols-2 gap-3">
+                  <div class="p-3 bg-cyan-50 rounded-lg">
+                    <span class="font-semibold">Masuk OK:</span> ${formData.waktu_masuk_ok ? new Date(formData.waktu_masuk_ok).toLocaleString("id-ID") : "-"}
+                  </div>
+                  <div class="p-3 bg-cyan-50 rounded-lg">
+                    <span class="font-semibold">Induksi:</span> ${formData.waktu_induksi ? new Date(formData.waktu_induksi).toLocaleString("id-ID") : "-"}
+                  </div>
+                  <div class="p-3 bg-cyan-50 rounded-lg">
+                    <span class="font-semibold">Incisi:</span> ${formData.waktu_incisi ? new Date(formData.waktu_incisi).toLocaleString("id-ID") : "-"}
+                  </div>
+                  <div class="p-3 bg-cyan-50 rounded-lg">
+                    <span class="font-semibold">Selesai:</span> ${formData.waktu_selesai_operasi ? new Date(formData.waktu_selesai_operasi).toLocaleString("id-ID") : "-"}
+                  </div>
+                  <div class="p-3 bg-cyan-50 rounded-lg">
+                    <span class="font-semibold">Keluar OK:</span> ${formData.waktu_keluar_ok ? new Date(formData.waktu_keluar_ok).toLocaleString("id-ID") : "-"}
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-4">
+                <h4 class="font-bold text-lg mb-2 text-blue-600">🫁 Teknik Anestesi</h4>
+                <div class="grid md:grid-cols-2 gap-3">
+                  <div class="p-3 bg-blue-50 rounded-lg">
+                    <span class="font-semibold">Teknik:</span> ${formData.teknik_anestesi || "-"}
+                  </div>
+                  <div class="p-3 bg-blue-50 rounded-lg">
+                    <span class="font-semibold">Jenis Airway:</span> ${formData.jenis_airway || "-"}
+                  </div>
+                  <div class="p-3 bg-blue-50 rounded-lg">
+                    <span class="font-semibold">Ukuran ETT:</span> ${formData.ukuran_ett || "-"}
+                  </div>
+                  <div class="p-3 bg-blue-50 rounded-lg">
+                    <span class="font-semibold">Kedalaman ETT:</span> ${formData.kedalaman_ett || "-"}
+                  </div>
+                </div>
+              </div>
+
+              ${
+                patientMonitoring.length > 0
+                  ? `
+                <div class="mb-4">
+                  <h4 class="font-bold text-lg mb-2 text-indigo-600">📊 Monitoring Intra Operatif (${patientMonitoring.length} Record)</h4>
+                  <div class="overflow-x-auto">
+                    <table class="w-full text-sm border-collapse">
+                      <thead class="bg-indigo-100">
+                        <tr>
+                          <th class="border p-2">Waktu</th>
+                          <th class="border p-2">Fase</th>
+                          <th class="border p-2">TD</th>
+                          <th class="border p-2">HR</th>
+                          <th class="border p-2">SpO2</th>
+                          <th class="border p-2">Temp</th>
+                          <th class="border p-2">Kesadaran</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${patientMonitoring
+                          .map(
+                            (m, idx) => `
+                          <tr class="${idx % 2 === 0 ? "bg-gray-50" : ""}">
+                            <td class="border p-2">${new Date(m.monitoring_waktu).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</td>
+                            <td class="border p-2">${m.monitoring_fase || "-"}</td>
+                            <td class="border p-2">${m.monitoring_td_sistol}/${m.monitoring_td_diastol}</td>
+                            <td class="border p-2">${m.monitoring_hr}</td>
+                            <td class="border p-2">${m.monitoring_spo2}%</td>
+                            <td class="border p-2">${m.monitoring_temp}°C</td>
+                            <td class="border p-2 text-xs">${m.monitoring_kesadaran || "-"}</td>
+                          </tr>
+                        `
+                          )
+                          .join("")}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              `
+                  : '<p class="text-gray-500 italic">Tidak ada data monitoring intra operatif</p>'
+              }
+
+              ${
+                formData.komplikasi
+                  ? `
+                <div class="p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
+                  <h4 class="font-bold text-red-700 mb-2">⚠️ Komplikasi:</h4>
+                  <p>${formData.komplikasi}</p>
+                </div>
+              `
+                  : ""
+              }
+
+              ${
+                formData.kondisi_keluar_ok
+                  ? `
+                <div class="p-4 bg-green-50 border-l-4 border-green-500 rounded-lg mt-4">
+                  <h4 class="font-bold text-green-700 mb-2">🚪 Kondisi Keluar OK:</h4>
+                  <p>${formData.kondisi_keluar_ok}</p>
+                </div>
+              `
+                  : ""
+              }
+            </div>
+
+            <!-- D. PASCA ANESTESI (RR) -->
+            <div class="bg-white rounded-xl p-6 border-2 border-gray-200 shadow-lg">
+              <h3 class="text-xl font-bold mb-4 text-teal-600 border-b-2 pb-2">🏥 D. PASCA ANESTESI (RECOVERY ROOM)</h3>
+              
+              <div class="mb-4">
+                <h4 class="font-bold text-lg mb-2 text-teal-500">📋 Pengkajian Awal</h4>
+                <div class="grid md:grid-cols-2 gap-3">
+                  <div class="p-3 bg-teal-50 rounded-lg">
+                    <span class="font-semibold">Waktu Masuk RR:</span> ${formData.waktu_masuk_rr ? new Date(formData.waktu_masuk_rr).toLocaleString("id-ID") : "-"}
+                  </div>
+                  <div class="p-3 bg-teal-50 rounded-lg">
+                    <span class="font-semibold">Kesadaran:</span> ${formData.kesadaran_pasca || "-"}
+                  </div>
+                  <div class="p-3 bg-teal-50 rounded-lg">
+                    <span class="font-semibold">Jalan Nafas:</span> ${formData.jalan_nafas_pasca || "-"}
+                  </div>
+                  <div class="p-3 bg-teal-50 rounded-lg">
+                    <span class="font-semibold">Pernafasan:</span> ${formData.pernafasan_pasca || "-"}
+                  </div>
+                  <div class="p-3 bg-teal-50 rounded-lg">
+                    <span class="font-semibold">Skala Nyeri:</span> ${formData.skala_nyeri_pasca || "-"}/10
+                  </div>
+                  <div class="p-3 bg-teal-50 rounded-lg">
+                    <span class="font-semibold">Mual/Muntah:</span> ${formData.mual_muntah || "-"}
+                  </div>
+                </div>
+              </div>
+
+              ${
+                patientObservasi.length > 0
+                  ? `
+                <div class="mb-4">
+                  <h4 class="font-bold text-lg mb-2 text-orange-600">📊 Observasi Vital Signs (${patientObservasi.length} Record)</h4>
+                  <div class="overflow-x-auto">
+                    <table class="w-full text-sm border-collapse">
+                      <thead class="bg-orange-100">
+                        <tr>
+                          <th class="border p-2">Waktu</th>
+                          <th class="border p-2">TD</th>
+                          <th class="border p-2">Nadi</th>
+                          <th class="border p-2">RR</th>
+                          <th class="border p-2">SpO2</th>
+                          <th class="border p-2">Suhu</th>
+                          <th class="border p-2">Kesadaran</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${patientObservasi
+                          .map(
+                            (o, idx) => `
+                          <tr class="${idx % 2 === 0 ? "bg-gray-50" : ""}">
+                            <td class="border p-2">${new Date(o.observasi_waktu).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</td>
+                            <td class="border p-2">${o.observasi_td_sistol}/${o.observasi_td_diastol}</td>
+                            <td class="border p-2">${o.observasi_nadi}</td>
+                            <td class="border p-2">${o.observasi_rr}</td>
+                            <td class="border p-2">${o.observasi_spo2}%</td>
+                            <td class="border p-2">${o.observasi_suhu}°C</td>
+                            <td class="border p-2 text-xs">${o.observasi_kesadaran}</td>
+                          </tr>
+                        `
+                          )
+                          .join("")}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              `
+                  : '<p class="text-gray-500 italic">Tidak ada data observasi pasca operasi</p>'
+              }
+
+              <div class="mb-4">
+                <h4 class="font-bold text-lg mb-2 text-green-600">📊 Skor Pemulihan</h4>
+                <div class="grid md:grid-cols-3 gap-3">
+                  <div class="p-3 bg-green-50 rounded-lg">
+                    <span class="font-semibold">Aldrete:</span> ${formData.skor_aldrete || "-"}
+                  </div>
+                  <div class="p-3 bg-green-50 rounded-lg">
+                    <span class="font-semibold">Bromage:</span> ${formData.skor_bromage || "-"}
+                  </div>
+                  <div class="p-3 bg-green-50 rounded-lg">
+                    <span class="font-semibold">Steward:</span> ${formData.skor_steward || "-"}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 class="font-bold text-lg mb-2 text-indigo-600">🏥 Rencana Perawatan Lanjutan</h4>
+                <div class="grid md:grid-cols-2 gap-3">
+                  <div class="p-3 bg-indigo-50 rounded-lg">
+                    <span class="font-semibold">Ruang Rawat:</span> ${formData.rencana_ruang_rawat || "-"}
+                  </div>
+                  <div class="p-3 bg-indigo-50 rounded-lg">
+                    <span class="font-semibold">Estimasi Rawat:</span> ${formData.estimasi_lama_rawat || "-"} hari
+                  </div>
+                  <div class="p-3 bg-indigo-50 rounded-lg">
+                    <span class="font-semibold">Waktu Keluar RR:</span> ${formData.waktu_keluar_rr ? new Date(formData.waktu_keluar_rr).toLocaleString("id-ID") : "-"}
+                  </div>
+                  <div class="p-3 bg-indigo-50 rounded-lg">
+                    <span class="font-semibold">Kondisi Keluar:</span> ${formData.kondisi_keluar_rr || "-"}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- E. TANDA TANGAN & PETUGAS -->
+            <div class="bg-white rounded-xl p-6 border-2 border-gray-200 shadow-lg">
+              <h3 class="text-xl font-bold mb-4 text-gray-700 border-b-2 pb-2">✍️ E. TANDA TANGAN & PETUGAS</h3>
+              <div class="grid md:grid-cols-2 gap-6">
+                <div class="p-4 border-2 rounded-lg">
+                  <h4 class="font-bold mb-3 text-center">Dokter Anestesi</h4>
+                  <div class="text-center">
+                    <p class="mb-12 text-gray-500 italic">(Tanda Tangan)</p>
+                    <p class="font-semibold border-t-2 pt-2">${formData.dokter_anestesi || "-"}</p>
+                    <p class="text-sm text-gray-600">${formData.waktu_asesmen ? new Date(formData.waktu_asesmen).toLocaleDateString("id-ID") : "-"}</p>
+                  </div>
+                </div>
+                <div class="p-4 border-2 rounded-lg">
+                  <h4 class="font-bold mb-3 text-center">Perawat RR</h4>
+                  <div class="text-center">
+                    <p class="mb-12 text-gray-500 italic">(Tanda Tangan)</p>
+                    <p class="font-semibold border-t-2 pt-2">${formData.perawat_rr || "-"}</p>
+                    <p class="text-sm text-gray-600">${formData.waktu_keluar_rr ? new Date(formData.waktu_keluar_rr).toLocaleDateString("id-ID") : "-"}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Footer Laporan -->
+            <div class="bg-gray-100 rounded-xl p-6 text-center text-sm text-gray-600">
+              <p>Laporan ini digenerate pada: <strong>${new Date().toLocaleString("id-ID")}</strong></p>
+              <p class="mt-2">${config.hospital_name || defaultConfig.hospital_name}</p>
+            </div>
+          </div>
+        `;
+        }
+        return "";
+      }
+
+      function calculateAge(birthDate) {
+        if (!birthDate) return "-";
+        const today = new Date();
+        const birth = new Date(birthDate);
+        let age = today.getFullYear() - birth.getFullYear();
+        const m = today.getMonth() - birth.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+        return age;
+      }
+
+      function updateAge(birthDate) {
+        const ageDisplay = document.getElementById("ageDisplay");
+        if (ageDisplay && birthDate) {
+          const age = calculateAge(birthDate);
+          ageDisplay.value = age + " tahun";
+          formData.birth_date = birthDate;
+        }
+      }
+
+      function showForm() {
+        currentPatientId = null;
+        formData = {};
+        activeTab = "patient";
+        currentView = "form";
+        render();
+      }
+
+      function switchTab(tab) {
+        activeTab = tab;
+        render();
+      }
+
+      function backToList() {
+        currentView = "list";
+        currentPatientId = null;
+        formData = {};
+        render();
+      }
+
+      async function saveForm(e) {
+        e.preventDefault();
+        const form = e.target;
+        const formDataObj = new FormData(form);
+
+        const data = {
+          record_type: "patient",
+          patient_id: formDataObj.get("patient_id"),
+          operation_id: formDataObj.get("operation_id"),
+          name: formDataObj.get("name"),
+          birth_date: formDataObj.get("birth_date"),
+          gender: formDataObj.get("gender"),
+          medical_diagnosis: formDataObj.get("medical_diagnosis"),
+          procedure_name: formDataObj.get("procedure_name"),
+          konfirmasi_identitas: formDataObj.get("konfirmasi_identitas") === "on",
+          konfirmasi_lokasi: formDataObj.get("konfirmasi_lokasi") || "",
+          mesin_obat_ready: formDataObj.get("mesin_obat_ready") === "on",
+          oksimeter_terpasang: formDataObj.get("oksimeter_terpasang") === "on",
+          informed_consent: formDataObj.get("informed_consent") === "on",
+          alergi: formDataObj.get("alergi") || "",
+          risiko_airway: formDataObj.get("risiko_airway") || "",
+          risiko_airway_note: formDataObj.get("risiko_airway_note") || "",
+          risiko_perdarahan: formDataObj.get("risiko_perdarahan") || "",
+          risiko_perdarahan_note: formDataObj.get("risiko_perdarahan_note") || "",
+          puasa_sesuai: formDataObj.get("puasa_sesuai") || "",
+          puasa_sesuai_note: formDataObj.get("puasa_sesuai_note") || "",
+          checklist_lengkap: formDataObj.get("checklist_lengkap") === "on",
+          waktu_sign_in: formDataObj.get("waktu_sign_in") || "",
+          user_sign_in_nama: formDataObj.get("user_sign_in_nama") || "",
+          user_sign_in_email: formDataObj.get("user_sign_in_email") || "",
+          dokter_anestesi: formDataObj.get("dokter_anestesi") || "",
+          waktu_asesmen: formDataObj.get("waktu_asesmen") || "",
+          asa_score: formDataObj.get("asa_score") || "",
+          status_fisik: formDataObj.get("status_fisik") || "",
+          penyakit_penyerta: formDataObj.get("penyakit_penyerta") || "",
+          td_sistol: formDataObj.get("td_sistol") || "",
+          td_diastol: formDataObj.get("td_diastol") || "",
+          nadi: formDataObj.get("nadi") || "",
+          suhu: formDataObj.get("suhu") || "",
+          respirasi: formDataObj.get("respirasi") || "",
+          skala_nyeri: formDataObj.get("skala_nyeri") || "",
+          saturasi_o2: formDataObj.get("saturasi_o2") || "",
+          alergi_pra: formDataObj.get("alergi_pra") || "",
+          risiko_airway_pra: formDataObj.get("risiko_airway_pra") || "",
+          risiko_perdarahan_pra: formDataObj.get("risiko_perdarahan_pra") || "",
+          status_puasa: formDataObj.get("status_puasa") || "",
+          mallampati: formDataObj.get("mallampati") || "",
+          gigi_palsu: formDataObj.get("gigi_palsu") || "",
+          lab_relevan: formDataObj.get("lab_relevan") || "",
+          ekg: formDataObj.get("ekg") || "",
+          ekg_hasil: formDataObj.get("ekg_hasil") || "",
+          diagnosis_anestesi: formDataObj.get("diagnosis_anestesi") || "",
+          penyulit_anestesi: formDataObj.get("penyulit_anestesi") || "",
+          rencana_anestesi: formDataObj.get("rencana_anestesi") || "",
+          rencana_airway: formDataObj.get("rencana_airway") || "",
+          rencana_analgesia: formDataObj.get("rencana_analgesia") || "",
+          rencana_perawatan: formDataObj.get("rencana_perawatan") || "",
+          catatan_persiapan: formDataObj.get("catatan_persiapan") || "",
+          status_kelayakan: formDataObj.get("status_kelayakan") || "",
+          edukasi_diberikan: formDataObj.get("edukasi_diberikan") === "on",
+          metode_edukasi: formDataObj.get("metode_edukasi") || "",
+          pasien_memahami: formDataObj.get("pasien_memahami") || "",
+          materi_edukasi: formDataObj.get("materi_edukasi") || "",
+          pertanyaan_pasien: formDataObj.get("pertanyaan_pasien") || "",
+          tanggal_consent: formDataObj.get("tanggal_consent") || "",
+          pemberi_edukasi: formDataObj.get("pemberi_edukasi") || "",
+          consent_ditandatangani: formDataObj.get("consent_ditandatangani") === "on",
+          waktu_masuk_ok: formDataObj.get("waktu_masuk_ok") || "",
+          waktu_induksi: formDataObj.get("waktu_induksi") || "",
+          waktu_incisi: formDataObj.get("waktu_incisi") || "",
+          waktu_selesai_operasi: formDataObj.get("waktu_selesai_operasi") || "",
+          waktu_keluar_ok: formDataObj.get("waktu_keluar_ok") || "",
+          teknik_anestesi: formDataObj.get("teknik_anestesi") || "",
+          jenis_airway: formDataObj.get("jenis_airway") || "",
+          ukuran_ett: formDataObj.get("ukuran_ett") || "",
+          kedalaman_ett: formDataObj.get("kedalaman_ett") || "",
+          obat_induksi: formDataObj.get("obat_induksi") || "",
+          obat_maintenance: formDataObj.get("obat_maintenance") || "",
+          obat_analgetik: formDataObj.get("obat_analgetik") || "",
+          obat_muscle_relaxant: formDataObj.get("obat_muscle_relaxant") || "",
+          obat_lainnya: formDataObj.get("obat_lainnya") || "",
+          kristaloid: formDataObj.get("kristaloid") || "",
+          koloid: formDataObj.get("koloid") || "",
+          transfusi_prc: formDataObj.get("transfusi_prc") || "",
+          transfusi_ffp: formDataObj.get("transfusi_ffp") || "",
+          transfusi_tc: formDataObj.get("transfusi_tc") || "",
+          perdarahan_estimated: formDataObj.get("perdarahan_estimated") || "",
+          urin_output: formDataObj.get("urin_output") || "",
+          komplikasi: formDataObj.get("komplikasi") || "",
+          catatan_intra: formDataObj.get("catatan_intra") || "",
+          kondisi_keluar_ok: formDataObj.get("kondisi_keluar_ok") || "",
+          waktu_masuk_rr: formDataObj.get("waktu_masuk_rr") || "",
+          kesadaran_pasca: formDataObj.get("kesadaran_pasca") || "",
+          jalan_nafas_pasca: formDataObj.get("jalan_nafas_pasca") || "",
+          pernafasan_pasca: formDataObj.get("pernafasan_pasca") || "",
+          sirkulasi_pasca: formDataObj.get("sirkulasi_pasca") || "",
+          aktivitas_pasca: formDataObj.get("aktivitas_pasca") || "",
+          skala_nyeri_pasca: formDataObj.get("skala_nyeri_pasca") || "",
+          mual_muntah: formDataObj.get("mual_muntah") || "",
+          jenis_operasi_pasca: formDataObj.get("jenis_operasi_pasca") || "",
+          waktu_mulai_operasi: formDataObj.get("waktu_mulai_operasi") || "",
+          waktu_selesai_operasi_pasca: formDataObj.get("waktu_selesai_operasi_pasca") || "",
+          lama_operasi_menit: formDataObj.get("lama_operasi_menit") || "",
+          cairan_kristaloid_pasca: formDataObj.get("cairan_kristaloid_pasca") || "",
+          cairan_koloid_pasca: formDataObj.get("cairan_koloid_pasca") || "",
+          transfusi_prc_pasca: formDataObj.get("transfusi_prc_pasca") || "",
+          transfusi_ffp_pasca: formDataObj.get("transfusi_ffp_pasca") || "",
+          transfusi_lain: formDataObj.get("transfusi_lain") || "",
+          masalah_teridentifikasi: formDataObj.get("masalah_teridentifikasi") || "",
+          tindakan_dilakukan: formDataObj.get("tindakan_dilakukan") || "",
+          instruksi_dokter: formDataObj.get("instruksi_dokter") || "",
+          output_urine_total: formDataObj.get("output_urine_total") || "",
+          waktu_mulai_urine: formDataObj.get("waktu_mulai_urine") || "",
+          waktu_akhir_urine: formDataObj.get("waktu_akhir_urine") || "",
+          skor_aldrete: formDataObj.get("skor_aldrete") || "",
+          skor_bromage: formDataObj.get("skor_bromage") || "",
+          skor_steward: formDataObj.get("skor_steward") || "",
+          keterangan_skor: formDataObj.get("keterangan_skor") || "",
+          rencana_ruang_rawat: formDataObj.get("rencana_ruang_rawat") || "",
+          estimasi_lama_rawat: formDataObj.get("estimasi_lama_rawat") || "",
+          instruksi_lanjutan: formDataObj.get("instruksi_lanjutan") || "",
+          waktu_keluar_rr: formDataObj.get("waktu_keluar_rr") || "",
+          kondisi_keluar_rr: formDataObj.get("kondisi_keluar_rr") || "",
+          perawat_rr: formDataObj.get("perawat_rr") || "",
+          dokter_anestesi_rr: formDataObj.get("dokter_anestesi_rr") || "",
+          created_at: new Date().toISOString(),
+        };
+
+        const result = await window.dataSdk.create(data);
+        if (result.isOk) {
+          showToast("✅ Data berhasil disimpan!", "success");
+          setTimeout(() => backToList(), 1500);
+        } else {
+          showToast("❌ Gagal menyimpan data", "error");
+        }
+      }
+
+      function editPatient(id) {
+        const patient = patients.find((p) => p.__backendId === id);
+        if (patient) {
+          formData = { ...patient };
+          currentPatientId = patient.patient_id;
+          activeTab = "patient";
+          currentView = "form";
+          render();
+        }
+      }
+
+      async function deletePatient(id) {
+        const patient = patients.find((p) => p.__backendId === id);
+        if (!patient) return;
+
+        const confirmDiv = document.createElement("div");
+        confirmDiv.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+        confirmDiv.innerHTML = `
+        <div class="bg-white rounded-2xl p-8 max-w-md">
+          <h3 class="text-xl font-bold mb-4">⚠️ Konfirmasi Hapus</h3>
+          <p class="mb-6">Yakin ingin menghapus data <strong>${patient.name}</strong>?</p>
+          <div class="flex gap-3 justify-end">
+            <button onclick="this.closest('.fixed').remove()" class="px-6 py-2 bg-gray-500 text-white rounded-lg">Batal</button>
+            <button onclick="confirmDelete('${id}')" class="px-6 py-2 bg-red-600 text-white rounded-lg">Hapus</button>
+          </div>
+        </div>
+      `;
+        document.body.appendChild(confirmDiv);
+      }
+
+      async function confirmDelete(id) {
+        const patient = patients.find((p) => p.__backendId === id);
+        if (!patient) return;
+
+        const result = await window.dataSdk.delete(patient);
+        if (result.isOk) {
+          showToast("✅ Data berhasil dihapus", "success");
+          document.querySelector(".fixed")?.remove();
+        } else {
+          showToast("❌ Gagal menghapus data", "error");
+        }
+      }
+
+      function showToast(message, type = "info") {
+        const toast = document.createElement("div");
+        const bgColor = type === "success" ? "bg-green-500" : type === "error" ? "bg-red-500" : "bg-blue-500";
+        toast.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-4 rounded-xl shadow-2xl z-50 font-semibold`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+      }
+
+      function showMonitoringModal() {
+        const modal = document.createElement("div");
+        modal.id = "monitoringModal";
+        modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4";
+        modal.innerHTML = `
+        <div class="bg-white rounded-2xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <h3 class="text-2xl font-bold mb-6 text-indigo-600">📊 Tambah Data Monitoring Intra Operatif</h3>
+          <form id="monitoringForm" onsubmit="saveMonitoring(event)" class="space-y-6">
+            
+            <!-- Waktu & Fase -->
+            <div class="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
+              <h4 class="font-bold mb-3 text-blue-700">⏰ Waktu & Fase Anestesi</h4>
+              <div class="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label class="font-semibold block mb-2">Waktu Monitoring *</label>
+                  <input type="datetime-local" name="monitoring_waktu" required class="w-full px-4 py-3 border-2 rounded-lg">
+                </div>
+                <div>
+                  <label class="font-semibold block mb-2">Fase Anestesi *</label>
+                  <select name="monitoring_fase" required class="w-full px-4 py-3 border-2 rounded-lg">
+                    <option value="">Pilih Fase...</option>
+                    <option value="Induksi">Induksi</option>
+                    <option value="Maintenance">Maintenance</option>
+                    <option value="Emergence">Emergence</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Hemodinamik -->
+            <div class="bg-red-50 p-4 rounded-lg border-2 border-red-200">
+              <h4 class="font-bold mb-3 text-red-700">❤️ Hemodinamik</h4>
+              <div class="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label class="font-semibold block mb-2">💉 TD Sistol (mmHg) *</label>
+                  <input type="number" name="monitoring_td_sistol" required class="w-full px-4 py-3 border-2 rounded-lg" placeholder="120">
+                </div>
+                <div>
+                  <label class="font-semibold block mb-2">💉 TD Diastol (mmHg) *</label>
+                  <input type="number" name="monitoring_td_diastol" required class="w-full px-4 py-3 border-2 rounded-lg" placeholder="80">
+                </div>
+                <div>
+                  <label class="font-semibold block mb-2">❤️ Heart Rate / Nadi (bpm) *</label>
+                  <input type="number" name="monitoring_hr" required class="w-full px-4 py-3 border-2 rounded-lg" placeholder="80">
+                </div>
+              </div>
+            </div>
+
+            <!-- Respirasi -->
+            <div class="bg-cyan-50 p-4 rounded-lg border-2 border-cyan-200">
+              <h4 class="font-bold mb-3 text-cyan-700">🫁 Respirasi</h4>
+              <div class="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label class="font-semibold block mb-2">🫁 Respiratory Rate / RR (x/min) *</label>
+                  <input type="number" name="monitoring_rr" required class="w-full px-4 py-3 border-2 rounded-lg" placeholder="16">
+                </div>
+                <div>
+                  <label class="font-semibold block mb-2">🫁 SpO2 (%) *</label>
+                  <input type="number" name="monitoring_spo2" required class="w-full px-4 py-3 border-2 rounded-lg" placeholder="98">
+                </div>
+                <div>
+                  <label class="font-semibold block mb-2">🌡️ EtCO2 (mmHg) *</label>
+                  <input type="number" name="monitoring_etco2" required class="w-full px-4 py-3 border-2 rounded-lg" placeholder="35">
+                </div>
+                <div>
+                  <label class="font-semibold block mb-2">🌡️ Suhu / Temperature (°C) *</label>
+                  <input type="number" step="0.1" name="monitoring_temp" required class="w-full px-4 py-3 border-2 rounded-lg" placeholder="36.5">
+                </div>
+              </div>
+            </div>
+
+            <!-- EKG, Nyeri, Kesadaran -->
+            <div class="bg-purple-50 p-4 rounded-lg border-2 border-purple-200">
+              <h4 class="font-bold mb-3 text-purple-700">🔬 EKG, Nyeri & Kesadaran</h4>
+              <div class="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label class="font-semibold block mb-2">📊 EKG *</label>
+                  <select name="monitoring_ekg" required class="w-full px-4 py-3 border-2 rounded-lg">
+                    <option value="">Pilih...</option>
+                    <option value="Sinus Ritme">Sinus Ritme</option>
+                    <option value="Takikardi">Takikardi</option>
+                    <option value="Bradikardi">Bradikardi</option>
+                    <option value="Aritmia">Aritmia</option>
+                    <option value="Normal">Normal</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="font-semibold block mb-2">😣 Skala Nyeri (0-10)</label>
+                  <input type="number" name="monitoring_nyeri" min="0" max="10" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="0">
+                </div>
+                <div class="md:col-span-2">
+                  <label class="font-semibold block mb-2">🧠 Kesadaran *</label>
+                  <select name="monitoring_kesadaran" required class="w-full px-4 py-3 border-2 rounded-lg">
+                    <option value="">Pilih...</option>
+                    <option value="Anestesi Umum">Anestesi Umum (Tidak Sadar)</option>
+                    <option value="Sedasi Dalam">Sedasi Dalam</option>
+                    <option value="Sedasi Sedang">Sedasi Sedang</option>
+                    <option value="Sadar Penuh">Sadar Penuh</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Fluid Balance -->
+            <div class="bg-teal-50 p-4 rounded-lg border-2 border-teal-200">
+              <h4 class="font-bold mb-3 text-teal-700">💧 Fluid Balance</h4>
+              <div class="grid md:grid-cols-3 gap-4">
+                <div>
+                  <label class="font-semibold block mb-2">Urine Output (ml)</label>
+                  <input type="number" name="monitoring_urine" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="100">
+                </div>
+                <div>
+                  <label class="font-semibold block mb-2">Cairan Masuk (ml)</label>
+                  <input type="number" name="monitoring_cairan_masuk" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="500">
+                </div>
+                <div>
+                  <label class="font-semibold block mb-2">Perdarahan (ml)</label>
+                  <input type="number" name="monitoring_perdarahan" class="w-full px-4 py-3 border-2 rounded-lg" placeholder="50">
+                </div>
+              </div>
+            </div>
+
+            <!-- Obat Diberikan -->
+            <div class="bg-yellow-50 p-4 rounded-lg border-2 border-yellow-200">
+              <h4 class="font-bold mb-3 text-yellow-700">💊 Obat yang Diberikan</h4>
+              <div>
+                <label class="font-semibold block mb-2">Dosis & Nama Obat</label>
+                <textarea name="monitoring_obat" class="w-full px-4 py-3 border-2 rounded-lg" rows="2" placeholder="Contoh: Fentanyl 50mcg IV, Propofol 100mg IV"></textarea>
+              </div>
+            </div>
+
+            <!-- Kejadian Khusus & Tindakan -->
+            <div class="bg-orange-50 p-4 rounded-lg border-2 border-orange-200">
+              <h4 class="font-bold mb-3 text-orange-700">⚠️ Kejadian Khusus & Tindakan</h4>
+              <div class="space-y-4">
+                <div>
+                  <label class="font-semibold block mb-2">Kejadian Khusus (Komplikasi, Event)</label>
+                  <textarea name="monitoring_kejadian" class="w-full px-4 py-3 border-2 rounded-lg" rows="2" placeholder="Hipotensi, bradikardi, dll (jika ada)"></textarea>
+                </div>
+                <div>
+                  <label class="font-semibold block mb-2">Tindakan yang Dilakukan</label>
+                  <textarea name="monitoring_tindakan" class="w-full px-4 py-3 border-2 rounded-lg" rows="2" placeholder="Tindakan untuk mengatasi kejadian (jika ada)"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- Petugas Input -->
+            <div class="bg-indigo-50 p-4 rounded-lg border-2 border-indigo-200">
+              <h4 class="font-bold mb-3 text-indigo-700">👤 Petugas Input</h4>
+              <div>
+                <label class="font-semibold block mb-2">Email Petugas (Auto-fill dari Dokter Anestesi) *</label>
+                <input type="email" name="monitoring_petugas" required class="w-full px-4 py-3 border-2 rounded-lg bg-gray-100" value="${formData.dokter_anestesi || ""}" placeholder="dokter@email.com">
+              </div>
+            </div>
+
+            <!-- Catatan Tambahan -->
+            <div class="bg-gray-50 p-4 rounded-lg border-2 border-gray-200">
+              <h4 class="font-bold mb-3 text-gray-700">📝 Catatan Tambahan</h4>
+              <div>
+                <label class="font-semibold block mb-2">Catatan</label>
+                <textarea name="monitoring_catatan" class="w-full px-4 py-3 border-2 rounded-lg" rows="3" placeholder="Catatan tambahan (opsional)"></textarea>
+              </div>
+            </div>
+
+            <div class="flex gap-3 justify-end pt-4 border-t-2">
+              <button type="button" onclick="closeMonitoringModal()" class="px-8 py-3 bg-gray-500 text-white rounded-xl font-bold hover:bg-gray-600 shadow">
+                ❌ Batal
+              </button>
+              <button type="submit" class="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg">
+                💾 Simpan Monitoring
+              </button>
+            </div>
+          </form>
+        </div>
+      `;
+        document.body.appendChild(modal);
+      }
+
+      function closeMonitoringModal() {
+        document.getElementById("monitoringModal")?.remove();
+      }
+
+      async function saveMonitoring(e) {
+        e.preventDefault();
+        const form = e.target;
+        const formDataObj = new FormData(form);
+
+        if (!formData.operation_id) {
+          showToast("��� ID Operasi tidak ditemukan", "error");
+          return;
+        }
+
+        const data = {
+          record_type: "monitoring",
+          operation_id: formData.operation_id,
+          patient_id: formData.patient_id,
+          monitoring_waktu: formDataObj.get("monitoring_waktu"),
+          monitoring_fase: formDataObj.get("monitoring_fase"),
+          monitoring_td_sistol: formDataObj.get("monitoring_td_sistol"),
+          monitoring_td_diastol: formDataObj.get("monitoring_td_diastol"),
+          monitoring_hr: formDataObj.get("monitoring_hr"),
+          monitoring_rr: formDataObj.get("monitoring_rr"),
+          monitoring_spo2: formDataObj.get("monitoring_spo2"),
+          monitoring_etco2: formDataObj.get("monitoring_etco2"),
+          monitoring_temp: formDataObj.get("monitoring_temp"),
+          monitoring_ekg: formDataObj.get("monitoring_ekg"),
+          monitoring_nyeri: formDataObj.get("monitoring_nyeri") || "",
+          monitoring_kesadaran: formDataObj.get("monitoring_kesadaran"),
+          monitoring_urine: formDataObj.get("monitoring_urine") || "",
+          monitoring_cairan_masuk: formDataObj.get("monitoring_cairan_masuk") || "",
+          monitoring_perdarahan: formDataObj.get("monitoring_perdarahan") || "",
+          monitoring_obat: formDataObj.get("monitoring_obat") || "",
+          monitoring_kejadian: formDataObj.get("monitoring_kejadian") || "",
+          monitoring_tindakan: formDataObj.get("monitoring_tindakan") || "",
+          monitoring_petugas: formDataObj.get("monitoring_petugas"),
+          monitoring_catatan: formDataObj.get("monitoring_catatan") || "",
+          created_at: new Date().toISOString(),
+        };
+
+        const result = await window.dataSdk.create(data);
+        if (result.isOk) {
+          showToast("✅ Data monitoring berhasil disimpan!", "success");
+          closeMonitoringModal();
+        } else {
+          showToast("❌ Gagal menyimpan data monitoring", "error");
+        }
+      }
+
+      async function deleteMonitoring(id) {
+        const monitoring = monitoringRecords.find((m) => m.__backendId === id);
+        if (!monitoring) return;
+
+        const confirmDiv = document.createElement("div");
+        confirmDiv.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+        confirmDiv.innerHTML = `
+        <div class="bg-white rounded-2xl p-8 max-w-md">
+          <h3 class="text-xl font-bold mb-4">⚠️ Konfirmasi Hapus</h3>
+          <p class="mb-6">Yakin ingin menghapus data monitoring <strong>${new Date(monitoring.monitoring_waktu).toLocaleString("id-ID")}</strong>?</p>
+          <div class="flex gap-3 justify-end">
+            <button onclick="this.closest('.fixed').remove()" class="px-6 py-2 bg-gray-500 text-white rounded-lg">Batal</button>
+            <button onclick="confirmDeleteMonitoring('${id}')" class="px-6 py-2 bg-red-600 text-white rounded-lg">Hapus</button>
+          </div>
+        </div>
+      `;
+        document.body.appendChild(confirmDiv);
+      }
+
+      async function confirmDeleteMonitoring(id) {
+        const monitoring = monitoringRecords.find((m) => m.__backendId === id);
+        if (!monitoring) return;
+
+        const result = await window.dataSdk.delete(monitoring);
+        if (result.isOk) {
+          showToast("✅ Data monitoring berhasil dihapus", "success");
+          document.querySelector(".fixed")?.remove();
+        } else {
+          showToast("❌ Gagal menghapus data monitoring", "error");
+        }
+      }
+
+      function showObservasiModal() {
+        const modal = document.createElement("div");
+        modal.id = "observasiModal";
+        modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4";
+        modal.innerHTML = `
+        <div class="bg-white rounded-2xl p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+          <h3 class="text-2xl font-bold mb-6 text-orange-600">📊 Tambah Data Observasi Pasca</h3>
+          <form id="observasiForm" onsubmit="saveObservasi(event)" class="space-y-4">
+            <div class="grid md:grid-cols-2 gap-4">
+              <div class="md:col-span-2">
+                <label class="font-semibold block mb-2">⏰ Waktu Observasi *</label>
+                <input type="datetime-local" name="observasi_waktu" required class="w-full px-4 py-3 border-2 rounded-lg">
+              </div>
+              <div>
+                <label class="font-semibold block mb-2">💉 Tekanan Darah Sistol (mmHg) *</label>
+                <input type="number" name="observasi_td_sistol" required class="w-full px-4 py-3 border-2 rounded-lg" placeholder="120">
+              </div>
+              <div>
+                <label class="font-semibold block mb-2">💉 Tekanan Darah Diastol (mmHg) *</label>
+                <input type="number" name="observasi_td_diastol" required class="w-full px-4 py-3 border-2 rounded-lg" placeholder="80">
+              </div>
+              <div>
+                <label class="font-semibold block mb-2">❤️ Nadi (x/menit) *</label>
+                <input type="number" name="observasi_nadi" required class="w-full px-4 py-3 border-2 rounded-lg" placeholder="80">
+              </div>
+              <div>
+                <label class="font-semibold block mb-2">🫁 Respirasi / RR (x/min) *</label>
+                <input type="number" name="observasi_rr" required class="w-full px-4 py-3 border-2 rounded-lg" placeholder="20">
+              </div>
+              <div>
+                <label class="font-semibold block mb-2">🫁 SpO2 (%) *</label>
+                <input type="number" name="observasi_spo2" required class="w-full px-4 py-3 border-2 rounded-lg" placeholder="98">
+              </div>
+              <div>
+                <label class="font-semibold block mb-2">🌡️ Suhu (°C) *</label>
+                <input type="number" step="0.1" name="observasi_suhu" required class="w-full px-4 py-3 border-2 rounded-lg" placeholder="36.5">
+              </div>
+              <div class="md:col-span-2">
+                <label class="font-semibold block mb-2">🧠 Kesadaran *</label>
+                <select name="observasi_kesadaran" required class="w-full px-4 py-3 border-2 rounded-lg">
+                  <option value="">Pilih...</option>
+                  <option value="Sadar Penuh">Sadar Penuh</option>
+                  <option value="Somnolen">Somnolen</option>
+                  <option value="Stupor">Stupor</option>
+                  <option value="Koma">Koma</option>
+                </select>
+              </div>
+              <div class="md:col-span-2">
+                <label class="font-semibold block mb-2">📝 Catatan</label>
+                <textarea name="observasi_catatan" class="w-full px-4 py-3 border-2 rounded-lg" rows="3" placeholder="Catatan tambahan (opsional)"></textarea>
+              </div>
+            </div>
+            <div class="flex gap-3 justify-end pt-4">
+              <button type="button" onclick="closeObservasiModal()" class="px-6 py-3 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600">
+                ❌ Batal
+              </button>
+              <button type="submit" class="px-6 py-3 bg-orange-600 text-white rounded-lg font-semibold hover:bg-orange-700">
+                💾 Simpan Observasi
+              </button>
+            </div>
+          </form>
+        </div>
+      `;
+        document.body.appendChild(modal);
+      }
+
+      function closeObservasiModal() {
+        document.getElementById("observasiModal")?.remove();
+      }
+
+      async function saveObservasi(e) {
+        e.preventDefault();
+        const form = e.target;
+        const formDataObj = new FormData(form);
+
+        if (!formData.operation_id) {
+          showToast("❌ ID Operasi tidak ditemukan", "error");
+          return;
+        }
+
+        const data = {
+          record_type: "observasi",
+          operation_id: formData.operation_id,
+          patient_id: formData.patient_id,
+          observasi_waktu: formDataObj.get("observasi_waktu"),
+          observasi_td_sistol: formDataObj.get("observasi_td_sistol"),
+          observasi_td_diastol: formDataObj.get("observasi_td_diastol"),
+          observasi_nadi: formDataObj.get("observasi_nadi"),
+          observasi_rr: formDataObj.get("observasi_rr"),
+          observasi_spo2: formDataObj.get("observasi_spo2"),
+          observasi_suhu: formDataObj.get("observasi_suhu"),
+          observasi_kesadaran: formDataObj.get("observasi_kesadaran"),
+          observasi_catatan: formDataObj.get("observasi_catatan") || "",
+          created_at: new Date().toISOString(),
+        };
+
+        const result = await window.dataSdk.create(data);
+        if (result.isOk) {
+          showToast("✅ Data observasi berhasil disimpan!", "success");
+          closeObservasiModal();
+        } else {
+          showToast("❌ Gagal menyimpan data observasi", "error");
+        }
+      }
+
+      async function deleteObservasi(id) {
+        const observasi = observasiRecords.find((o) => o.__backendId === id);
+        if (!observasi) return;
+
+        const confirmDiv = document.createElement("div");
+        confirmDiv.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+        confirmDiv.innerHTML = `
+        <div class="bg-white rounded-2xl p-8 max-w-md">
+          <h3 class="text-xl font-bold mb-4">⚠️ Konfirmasi Hapus</h3>
+          <p class="mb-6">Yakin ingin menghapus data observasi <strong>${new Date(observasi.observasi_waktu).toLocaleString("id-ID")}</strong>?</p>
+          <div class="flex gap-3 justify-end">
+            <button onclick="this.closest('.fixed').remove()" class="px-6 py-2 bg-gray-500 text-white rounded-lg">Batal</button>
+            <button onclick="confirmDeleteObservasi('${id}')" class="px-6 py-2 bg-red-600 text-white rounded-lg">Hapus</button>
+          </div>
+        </div>
+      `;
+        document.body.appendChild(confirmDiv);
+      }
+
+      async function confirmDeleteObservasi(id) {
+        const observasi = observasiRecords.find((o) => o.__backendId === id);
+        if (!observasi) return;
+
+        const result = await window.dataSdk.delete(observasi);
+        if (result.isOk) {
+          showToast("✅ Data observasi berhasil dihapus", "success");
+          document.querySelector(".fixed")?.remove();
+        } else {
+          showToast("❌ Gagal menghapus data observasi", "error");
+        }
+      }
+
+      function exportLaporan() {
+        showToast("📥 Fitur export akan segera tersedia. Gunakan tombol Cetak untuk sementara.", "info");
+      }
+
+      init();
+      render();
+    </script>
+    <script>
+      (function () {
+        function c() {
+          var b = a.contentDocument || a.contentWindow.document;
+          if (b) {
+            var d = b.createElement("script");
+            d.innerHTML =
+              "window.__CF$cv$params={r:'9c089d7e432ae875',t:'MTc2ODg0OTY0OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
+            b.getElementsByTagName("head")[0].appendChild(d);
+          }
+        }
+        if (document.body) {
+          var a = document.createElement("iframe");
+          a.height = 1;
+          a.width = 1;
+          a.style.position = "absolute";
+          a.style.top = 0;
+          a.style.left = 0;
+          a.style.border = "none";
+          a.style.visibility = "hidden";
+          document.body.appendChild(a);
+          if ("loading" !== document.readyState) c();
+          else if (window.addEventListener) document.addEventListener("DOMContentLoaded", c);
+          else {
+            var e = document.onreadystatechange || function () {};
+            document.onreadystatechange = function (b) {
+              e(b);
+              "loading" !== document.readyState && ((document.onreadystatechange = e), c());
+            };
+          }
+        }
+      })();
+    </script>
+  </body>
+</html>
